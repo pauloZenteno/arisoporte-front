@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Switch, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { getUserInfo, clearSession } from '../services/api';
+import { getUserInfo, clearSession } from '../services/authService';
 
 export default function SettingsScreen({ navigation }) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);

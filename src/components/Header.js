@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform, StatusBar, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import LogoSvg from '../assets/logo_arisoporte.svg';
 
 export default function Header({ navigation }) {
   return (
@@ -19,7 +18,10 @@ export default function Header({ navigation }) {
           
           {/* Logo (Asegúrate de que tu SVG tenga relleno blanco o se vea bien en oscuro) */}
           <View style={styles.logoContainer}>
-              <LogoSvg width={90} height={40} /> 
+              <Image 
+                source={require('../assets/header_logo.png')} 
+                style={{ width: 180, height: 60, resizeMode: 'contain' }} // Ajusta width/height según tu diseño
+              />
           </View>
           
           {/* Botón con fondo translúcido (Efecto cristal) */}

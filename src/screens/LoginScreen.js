@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { 
-  StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator, Alert
+  StyleSheet, View, TextInput, TouchableOpacity, 
+  KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator, Alert, Image, Text
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api, { setSession, setUserInfo } from '../services/api';
+import { login, setSession, setUserInfo } from '../services/authService';
+import { useClients } from '../context/ClientContext';
 
-import LogoSvg from '../assets/logo_arisoporte.svg'; 
 import BackgroundSvg from '../assets/login_background.svg'; 
 
 const { width, height } = Dimensions.get('window');
@@ -16,6 +16,7 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { loadInitialData } = useClients();
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -26,10 +27,7 @@ export default function LoginScreen({ navigation }) {
     setIsLoading(true);
 
     try {
-      const response = await api.post('/administration/Users/login', {
-        username: username,
-        password: password
-      });
+      const data = await login(username, password);
 
       const { 
         accessToken, 
@@ -37,10 +35,12 @@ export default function LoginScreen({ navigation }) {
         firstName, 
         lastName, 
         jobPosition 
-      } = response.data;
+      } = data;
 
       await setSession(accessToken, refreshToken);
       await setUserInfo({ firstName, lastName, jobPosition });
+
+      loadInitialData();
 
       navigation.replace('MainTabs');
 
@@ -69,8 +69,10 @@ export default function LoginScreen({ navigation }) {
         <View style={styles.contentContainer}>
           
           <View style={styles.logoContainer}>
-            <LogoSvg width={150} height={150} />
-            <Text style={styles.logoText}>Ari | Soporte</Text>
+            <Image 
+              source={require('../assets/logo_arisoporte.png')}
+              style={styles.logoImage} 
+            />
           </View>
 
           <View style={styles.inputContainer}>
@@ -104,10 +106,6 @@ export default function LoginScreen({ navigation }) {
               />
               <Text style={styles.checkboxText}>Recordarme</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity>
-              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
-            </TouchableOpacity>
           </View>
 
           <TouchableOpacity 
@@ -121,13 +119,6 @@ export default function LoginScreen({ navigation }) {
               <Text style={styles.loginButtonText}>INICIAR SESIÓN</Text>
             )}
           </TouchableOpacity>
-
-          <View style={styles.footerContainer}>
-            <Text style={styles.footerText}>¿No tienes una cuenta? </Text>
-            <TouchableOpacity>
-              <Text style={[styles.footerText, styles.contactLink]}>Contáctanos</Text>
-            </TouchableOpacity>
-          </View>
 
         </View>
       </KeyboardAvoidingView>
@@ -155,11 +146,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logoText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: 'white',
-    marginTop: 10,
+  logoImage: {
+    width: 150, 
+    height: 150, 
+    resizeMode: 'contain',
   },
   inputContainer: {
     marginBottom: 20,
@@ -179,8 +169,6 @@ const styles = StyleSheet.create({
   },
   optionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 40,
   },
   checkboxContainer: {
@@ -190,10 +178,6 @@ const styles = StyleSheet.create({
   checkboxText: {
     color: 'white',
     marginLeft: 8,
-  },
-  forgotText: {
-    color: '#dae4ff',
-    fontSize: 14,
   },
   loginButton: {
     backgroundColor: '#6FCF97',
@@ -216,16 +200,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     letterSpacing: 1,
   },
-  footerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  footerText: {
-    color: 'white',
-    fontSize: 14,
-  },
-  contactLink: {
-    color: '#6FCF97',
-    fontWeight: 'bold',
-  }
 });

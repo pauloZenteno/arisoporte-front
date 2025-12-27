@@ -1,36 +1,49 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { getClientsFiltered } from '../services/api';
+import * as SecureStore from 'expo-secure-store';
+import { getClientsFiltered } from '../services/clientService';
 
 const ClientContext = createContext();
 
 export const ClientProvider = ({ children }) => {
-  // --- ESTADOS PARA DEMOS ---
+  // --- ESTADOS DEMOS ---
   const [demos, setDemos] = useState([]);
   const [loadingDemos, setLoadingDemos] = useState(false);
   const [demoPage, setDemoPage] = useState(1);
   const [hasMoreDemos, setHasMoreDemos] = useState(true);
-  
   const [activeDemoFilter, setActiveDemoFilter] = useState({ 
-    sortParam: 'TrialEndsAt', 
-    isDescending: false,
-    sellerId: null 
+    sortParam: 'TrialEndsAt', isDescending: false, sellerId: null 
   });
 
-  // --- ESTADOS PARA ACTIVOS ---
+  // --- ESTADOS ACTIVOS ---
   const [actives, setActives] = useState([]);
   const [loadingActives, setLoadingActives] = useState(false);
   const [activePage, setActivePage] = useState(1);
   const [hasMoreActives, setHasMoreActives] = useState(true);
 
-  // --- ESTADOS PARA INACTIVOS ---
+  // --- ESTADOS INACTIVOS (NUEVO FILTRO) ---
   const [inactives, setInactives] = useState([]);
   const [loadingInactives, setLoadingInactives] = useState(false);
   const [inactivePage, setInactivePage] = useState(1);
   const [hasMoreInactives, setHasMoreInactives] = useState(true);
+  // Estado para filtros de inactivos
+  const [activeInactiveFilter, setActiveInactiveFilter] = useState({ 
+    sortParam: 'TrialEndsAt', 
+    isDescending: false, 
+    sellerId: null 
+  });
 
   const PAGE_SIZE = 10;
 
+  const appendUnique = (prevItems, newItems) => {
+    const existingIds = new Set(prevItems.map(item => item.id));
+    const uniqueNew = newItems.filter(item => !existingIds.has(item.id));
+    return [...prevItems, ...uniqueNew];
+  };
+
   const fetchGeneric = async (category, page, filters) => {
+    const token = await SecureStore.getItemAsync('accessToken');
+    if (!token) return { newItems: [], totalCount: 0, success: false };
+
     let params = {
       pageNumber: page,
       pageSize: PAGE_SIZE,
@@ -40,7 +53,6 @@ export const ClientProvider = ({ children }) => {
       ...filters 
     };
 
-    // Limpieza de parámetros nulos/undefined
     Object.keys(params).forEach(key => (params[key] === null || params[key] === undefined) && delete params[key]);
 
     try {
@@ -48,115 +60,93 @@ export const ClientProvider = ({ children }) => {
       const newItems = Array.isArray(result) ? result : (result.items || result.data || []);
       return { newItems, totalCount: result.totalCount || 0, success: true }; 
     } catch (error) {
-      console.error(`Error cargando ${category} (Página ${page}):`, error.message);
+      console.log(`Info: Carga de ${category} fallida:`, error.message);
       return { newItems: [], totalCount: 0, success: false };
     }
   };
 
-  const appendUnique = (prevItems, newItems) => {
-    const existingIds = new Set(prevItems.map(item => item.id));
-    const uniqueNew = newItems.filter(item => !existingIds.has(item.id));
-    return [...prevItems, ...uniqueNew];
-  };
-
-  // 1. Cargar DEMOS
+  // --- FETCH DEMOS ---
   const fetchDemos = async (page = 1, filters = activeDemoFilter, shouldRefresh = false) => {
     if (loadingDemos || (!hasMoreDemos && !shouldRefresh)) return;
     setLoadingDemos(true);
-
-    const apiFilters = {
-      sortParam: filters.sortParam,
-      isDescending: filters.isDescending,
-      sellerId: filters.sellerId,
-      statuses: 1, 
-      types: true,  
-      filterActives: true
-    };
-
+    const apiFilters = { sortParam: filters.sortParam, isDescending: filters.isDescending, sellerId: filters.sellerId, statuses: 1, types: true, filterActives: true };
     const { newItems, success } = await fetchGeneric('demos', page, apiFilters);
-
+    
     if (shouldRefresh || page === 1) {
       setDemos(newItems);
       setDemoPage(1);
       setHasMoreDemos(success && newItems.length >= PAGE_SIZE);
+    } else if (success && newItems.length > 0) {
+      setDemos(prev => appendUnique(prev, newItems));
+      setDemoPage(page);
+      setHasMoreDemos(newItems.length >= PAGE_SIZE);
     } else {
-      if (success && newItems.length > 0) {
-        setDemos(prev => appendUnique(prev, newItems));
-        setDemoPage(page);
-        setHasMoreDemos(newItems.length >= PAGE_SIZE);
-      } else {
-        setHasMoreDemos(false);
-      }
+      setHasMoreDemos(false);
     }
     setLoadingDemos(false);
   };
 
-  // 2. Cargar ACTIVOS
+  // --- FETCH ACTIVOS ---
   const fetchActives = async (page = 1, shouldRefresh = false) => {
     if (loadingActives || (!hasMoreActives && !shouldRefresh)) return;
     setLoadingActives(true);
-
-    const apiFilters = {
-      statuses: 1,    
-      types: false,   
-      sortParam: 'CreatedAt', 
-      isDescending: true,
-      filterActives: true
-    };
-
+    const apiFilters = { statuses: 1, types: false, sortParam: 'CreatedAt', isDescending: true, filterActives: true };
     const { newItems, success } = await fetchGeneric('actives', page, apiFilters);
-
+    
     if (shouldRefresh || page === 1) {
       setActives(newItems);
       setActivePage(1);
       setHasMoreActives(success && newItems.length >= PAGE_SIZE);
+    } else if (success && newItems.length > 0) {
+      setActives(prev => appendUnique(prev, newItems));
+      setActivePage(page);
+      setHasMoreActives(newItems.length >= PAGE_SIZE);
     } else {
-      if (success && newItems.length > 0) {
-        setActives(prev => appendUnique(prev, newItems));
-        setActivePage(page);
-        setHasMoreActives(newItems.length >= PAGE_SIZE);
-      } else {
-        setHasMoreActives(false);
-      }
+      setHasMoreActives(false);
     }
     setLoadingActives(false);
   };
 
-  // 3. Cargar INACTIVOS
-  const fetchInactives = async (page = 1, shouldRefresh = false) => {
+  // --- FETCH INACTIVOS (ACTUALIZADO CON FILTROS) ---
+  const fetchInactives = async (page = 1, filters = activeInactiveFilter, shouldRefresh = false) => {
     if (loadingInactives || (!hasMoreInactives && !shouldRefresh)) return;
     setLoadingInactives(true);
 
-    const apiFilters = {
-      statuses: 2,
-      sortParam: 'CreatedAt', 
-      isDescending: true,
-      filterActives: true
+    // Mapeo especial: Si el filtro dice 'TrialEndsAt' (que viene del componente genérico), 
+    // para inactivos lo cambiamos a 'CreatedAt' o 'UpdatedAt'
+    let finalSort = filters.sortParam;
+    if (finalSort === 'TrialEndsAt') finalSort = 'CreatedAt'; 
+
+    const apiFilters = { 
+      statuses: 2, 
+      sortParam: finalSort, 
+      isDescending: filters.isDescending,
+      sellerId: filters.sellerId, // Incluimos vendedor
+      filterActives: true 
     };
 
     const { newItems, success } = await fetchGeneric('inactives', page, apiFilters);
-
+    
     if (shouldRefresh || page === 1) {
       setInactives(newItems);
       setInactivePage(1);
       setHasMoreInactives(success && newItems.length >= PAGE_SIZE);
+    } else if (success && newItems.length > 0) {
+      setInactives(prev => appendUnique(prev, newItems));
+      setInactivePage(page);
+      setHasMoreInactives(newItems.length >= PAGE_SIZE);
     } else {
-      if (success && newItems.length > 0) {
-        setInactives(prev => appendUnique(prev, newItems));
-        setInactivePage(page);
-        setHasMoreInactives(newItems.length >= PAGE_SIZE);
-      } else {
-        setHasMoreInactives(false);
-      }
+      setHasMoreInactives(false);
     }
     setLoadingInactives(false);
   };
 
+  // Helpers de aplicación de filtros
   const applyDemoFilter = (newSortParam, isDesc, newSellerId) => {
     const newFilters = { 
         ...activeDemoFilter,
-        sortParam: newSortParam !== undefined ? newSortParam : activeDemoFilter.sortParam,
-        isDescending: isDesc !== undefined ? isDesc : activeDemoFilter.isDescending,
+        sortParam: newSortParam ?? activeDemoFilter.sortParam,
+        isDescending: isDesc ?? activeDemoFilter.isDescending,
         sellerId: newSellerId !== undefined ? newSellerId : activeDemoFilter.sellerId
     };
     setActiveDemoFilter(newFilters);
@@ -164,26 +154,47 @@ export const ClientProvider = ({ children }) => {
     fetchDemos(1, newFilters, true);
   };
 
+  // NUEVO: Helper para Inactivos
+  const applyInactiveFilter = (newSortParam, isDesc, newSellerId) => {
+    const newFilters = { 
+        ...activeInactiveFilter,
+        sortParam: newSortParam ?? activeInactiveFilter.sortParam,
+        isDescending: isDesc ?? activeInactiveFilter.isDescending,
+        sellerId: newSellerId !== undefined ? newSellerId : activeInactiveFilter.sellerId
+    };
+    setActiveInactiveFilter(newFilters);
+    setHasMoreInactives(true); 
+    fetchInactives(1, newFilters, true);
+  };
+
+  const loadInitialData = async () => {
+    await Promise.all([
+        fetchDemos(1, activeDemoFilter, true),
+        fetchActives(1, true),
+        fetchInactives(1, activeInactiveFilter, true) // Usar el filtro correcto
+    ]);
+  };
+
   useEffect(() => {
-    fetchDemos(1, activeDemoFilter, true);
-    fetchActives(1, true);
-    fetchInactives(1, true);
+    const init = async () => {
+        const token = await SecureStore.getItemAsync('accessToken');
+        if (token) loadInitialData();
+    };
+    init();
   }, []);
 
   return (
     <ClientContext.Provider value={{ 
-      demos, loadingDemos, hasMoreDemos,
-      fetchDemos: () => fetchDemos(demoPage + 1), 
-      refreshDemos: () => fetchDemos(1, activeDemoFilter, true),
-      applyDemoFilter, activeDemoFilter,
-
-      actives, loadingActives, hasMoreActives,
-      fetchActives: () => fetchActives(activePage + 1),
-      refreshActives: () => fetchActives(1, true),
-
-      inactives, loadingInactives, hasMoreInactives,
-      fetchInactives: () => fetchInactives(inactivePage + 1),
-      refreshInactives: () => fetchInactives(1, true),
+      loadInitialData,
+      demos, loadingDemos, hasMoreDemos, fetchDemos: () => fetchDemos(demoPage + 1), refreshDemos: () => fetchDemos(1, activeDemoFilter, true), applyDemoFilter, activeDemoFilter,
+      
+      actives, loadingActives, hasMoreActives, fetchActives: () => fetchActives(activePage + 1), refreshActives: () => fetchActives(1, true),
+      
+      inactives, loadingInactives, hasMoreInactives, 
+      fetchInactives: () => fetchInactives(inactivePage + 1), 
+      refreshInactives: () => fetchInactives(1, activeInactiveFilter, true),
+      applyInactiveFilter, // EXPORTAMOS LA FUNCIÓN
+      activeInactiveFilter // EXPORTAMOS EL ESTADO
     }}>
       {children}
     </ClientContext.Provider>
