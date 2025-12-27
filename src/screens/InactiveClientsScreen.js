@@ -1,11 +1,12 @@
+// src/screens/InactiveClientsScreen.js
 import React, { useState } from 'react';
 import { 
-  StyleSheet, Text, View, FlatList, LayoutAnimation, Platform, UIManager, ActivityIndicator 
+  StyleSheet, Text, View, FlatList, LayoutAnimation, Platform, UIManager, ActivityIndicator, Alert 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useClients } from '../context/ClientContext';
 import ClientFilterHeader from '../components/ClientFilterHeader'; 
-import InactiveClientCard from '../components/cards/InactiveClientCard'; // <--- Importamos la tarjeta
+import InactiveClientCard from '../components/cards/InactiveClientCard';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -15,9 +16,10 @@ export default function InactiveClientsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState(null);
 
+  // 1. Extraemos reactivateClient del contexto
   const { 
     inactives, loadingInactives, fetchInactives, refreshInactives, hasMoreInactives,
-    activeInactiveFilter, applyInactiveFilter 
+    activeInactiveFilter, applyInactiveFilter, reactivateClient 
   } = useClients();
 
   const filteredData = inactives ? inactives.filter(item => 
@@ -29,6 +31,18 @@ export default function InactiveClientsScreen() {
   const handleExpand = (id) => { 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); 
       setExpandedId(expandedId === id ? null : id); 
+  };
+
+  // 2. Función de confirmación antes de reactivar
+  const handleReactivatePress = (id) => {
+    Alert.alert(
+        "Confirmar Reactivación",
+        "¿Estás seguro de que deseas reactivar a este cliente?",
+        [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Reactivar", onPress: () => reactivateClient(id) }
+        ]
+    );
   };
 
   return (
@@ -48,7 +62,9 @@ export default function InactiveClientsScreen() {
             <InactiveClientCard 
                 item={item} 
                 isExpanded={expandedId === item.id} 
-                onPress={() => handleExpand(item.id)} 
+                onPress={() => handleExpand(item.id)}
+                // 3. Pasamos la función a la tarjeta
+                onReactivate={() => handleReactivatePress(item.id)}
             />
         )}
         contentContainerStyle={styles.listContent}

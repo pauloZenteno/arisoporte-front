@@ -2,11 +2,16 @@ import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SELLER_MAP } from '../../utils/constants';
+import { openWhatsApp } from '../../utils/actions';
 
-const InactiveClientCard = React.memo(({ item, isExpanded, onPress }) => {
-  // Conversión segura a String para buscar en el mapa
+const InactiveClientCard = React.memo(({ item, isExpanded, onPress, onReactivate }) => {
   const sellerIdStr = item.sellerId ? String(item.sellerId) : null;
   const sellerName = SELLER_MAP[sellerIdStr];
+
+  const handleContact = () => {
+    const message = `Hola ${item.name || 'Cliente'}, te contacto desde Ari Soporte respecto a tu cuenta suspendida.`;
+    openWhatsApp(item.phoneNumber, message);
+  };
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
@@ -17,9 +22,9 @@ const InactiveClientCard = React.memo(({ item, isExpanded, onPress }) => {
         </View>
         
         <View style={styles.rightContainer}>
-            {/* Badge Suspendido (Rojo) */}
+            {/* CAMBIO AQUI: Badge Suspendido (Naranja) */}
             <View style={styles.statusBadge}>
-                <Ionicons name="alert-circle" size={12} color="#B91C1C" style={{marginRight: 4}} />
+                <Ionicons name="alert-circle" size={12} color="#EA580C" style={{marginRight: 4}} />
                 <Text style={styles.statusText}>Suspendido</Text>
             </View>
             
@@ -36,7 +41,6 @@ const InactiveClientCard = React.memo(({ item, isExpanded, onPress }) => {
         <View style={styles.expandedContent}>
           <View style={styles.divider} />
           
-          {/* Fila Vendedor (Solo si existe) */}
           {sellerName && (
             <View style={styles.metaRow}>
                 <Ionicons name="person-outline" size={16} color="#6B7280" />
@@ -45,12 +49,18 @@ const InactiveClientCard = React.memo(({ item, isExpanded, onPress }) => {
           )}
 
           <View style={styles.actionsContainer}>
-              <TouchableOpacity style={[styles.actionButton, styles.btnWhatsapp]}>
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.btnWhatsapp]}
+                onPress={handleContact}
+              >
                   <Ionicons name="logo-whatsapp" size={18} color="white" />
                   <Text style={styles.actionText}>Contactar</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity style={[styles.actionButton, styles.btnReactivate]}>
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.btnReactivate]}
+                onPress={onReactivate}
+              >
                   <Ionicons name="refresh" size={18} color="#2b5cb5" />
                   <Text style={[styles.actionText, styles.textReactivate]}>Reactivar</Text>
               </TouchableOpacity>
@@ -78,8 +88,22 @@ const styles = StyleSheet.create({
   rightContainer: { alignItems: 'flex-end', justifyContent: 'flex-start' },
   clientName: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 },
   clientAlias: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }, 
-  statusText: { color: '#B91C1C', fontSize: 11, fontWeight: '700' },
+  
+  // CAMBIO EN ESTILOS: Colores Naranjas
+  statusBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFF7ED', // Fondo naranja muy claro
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 20 
+  }, 
+  statusText: { 
+    color: '#EA580C', // Naranja vibrante
+    fontSize: 11, 
+    fontWeight: '700' 
+  },
+  
   expandedContent: { marginTop: 20 },
   divider: { height: 1, backgroundColor: '#F3F4F6', marginBottom: 15 },
   metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },

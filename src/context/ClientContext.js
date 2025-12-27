@@ -1,11 +1,11 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { Alert } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { getClientsFiltered } from '../services/clientService';
+import { getClientsFiltered, updateClientStatus } from '../services/clientService';
 
 const ClientContext = createContext();
 
 export const ClientProvider = ({ children }) => {
-  // --- ESTADOS DEMOS ---
   const [demos, setDemos] = useState([]);
   const [loadingDemos, setLoadingDemos] = useState(false);
   const [demoPage, setDemoPage] = useState(1);
@@ -14,20 +14,17 @@ export const ClientProvider = ({ children }) => {
     sortParam: 'TrialEndsAt', isDescending: false, sellerId: null 
   });
 
-  // --- ESTADOS ACTIVOS (NUEVO: AGREGAMOS FILTROS) ---
   const [actives, setActives] = useState([]);
   const [loadingActives, setLoadingActives] = useState(false);
   const [activePage, setActivePage] = useState(1);
   const [hasMoreActives, setHasMoreActives] = useState(true);
   
-  // Estado de filtro para ACTIVOS
   const [activeActiveFilter, setActiveActiveFilter] = useState({ 
-    sortParam: 'CreatedAt', // Por defecto: Recientes
+    sortParam: 'CreatedAt', 
     isDescending: true, 
     sellerId: null 
   });
 
-  // --- ESTADOS INACTIVOS ---
   const [inactives, setInactives] = useState([]);
   const [loadingInactives, setLoadingInactives] = useState(false);
   const [inactivePage, setInactivePage] = useState(1);
@@ -71,7 +68,6 @@ export const ClientProvider = ({ children }) => {
     }
   };
 
-  // --- FETCH DEMOS ---
   const fetchDemos = async (page = 1, filters = activeDemoFilter, shouldRefresh = false) => {
     if (loadingDemos || (!hasMoreDemos && !shouldRefresh)) return;
     setLoadingDemos(true);
@@ -92,12 +88,10 @@ export const ClientProvider = ({ children }) => {
     setLoadingDemos(false);
   };
 
-  // --- FETCH ACTIVOS (ACTUALIZADO) ---
   const fetchActives = async (page = 1, filters = activeActiveFilter, shouldRefresh = false) => {
     if (loadingActives || (!hasMoreActives && !shouldRefresh)) return;
     setLoadingActives(true);
 
-    // Mapeo de Sort: Si el header manda 'TrialEndsAt', lo convertimos a 'CreatedAt' para activos
     let finalSort = filters.sortParam;
     if (finalSort === 'TrialEndsAt') finalSort = 'CreatedAt'; 
 
@@ -106,7 +100,7 @@ export const ClientProvider = ({ children }) => {
         types: false,   
         sortParam: finalSort, 
         isDescending: filters.isDescending,
-        sellerId: filters.sellerId, // Filtro de vendedor
+        sellerId: filters.sellerId, 
         filterActives: true
     };
 
@@ -126,7 +120,6 @@ export const ClientProvider = ({ children }) => {
     setLoadingActives(false);
   };
 
-  // --- FETCH INACTIVOS ---
   const fetchInactives = async (page = 1, filters = activeInactiveFilter, shouldRefresh = false) => {
     if (loadingInactives || (!hasMoreInactives && !shouldRefresh)) return;
     setLoadingInactives(true);
@@ -158,7 +151,6 @@ export const ClientProvider = ({ children }) => {
     setLoadingInactives(false);
   };
 
-  // Helpers de aplicación de filtros
   const applyDemoFilter = (newSortParam, isDesc, newSellerId) => {
     const newFilters = { ...activeDemoFilter, sortParam: newSortParam ?? activeDemoFilter.sortParam, isDescending: isDesc ?? activeDemoFilter.isDescending, sellerId: newSellerId !== undefined ? newSellerId : activeDemoFilter.sellerId };
     setActiveDemoFilter(newFilters);
@@ -173,7 +165,6 @@ export const ClientProvider = ({ children }) => {
     fetchInactives(1, newFilters, true);
   };
 
-  // NUEVO: Helper para Activos
   const applyActiveFilter = (newSortParam, isDesc, newSellerId) => {
     const newFilters = { ...activeActiveFilter, sortParam: newSortParam ?? activeActiveFilter.sortParam, isDescending: isDesc ?? activeActiveFilter.isDescending, sellerId: newSellerId !== undefined ? newSellerId : activeActiveFilter.sellerId };
     setActiveActiveFilter(newFilters);
@@ -181,10 +172,38 @@ export const ClientProvider = ({ children }) => {
     fetchActives(1, newFilters, true);
   };
 
+  const reactivateClient = async (clientId) => {
+    try {
+      await updateClientStatus(clientId, 1, false);
+      Alert.alert('Éxito', 'Cliente reactivado correctamente');
+      
+      fetchInactives(1, activeInactiveFilter, true);
+      fetchActives(1, activeActiveFilter, true);
+
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'No se pudo reactivar al cliente');
+    }
+  };
+
+  const suspendClient = async (clientId) => {
+    try {
+      await updateClientStatus(clientId, 2, false);
+      Alert.alert('Éxito', 'Cliente suspendido correctamente');
+      
+      fetchActives(1, activeActiveFilter, true);
+      fetchInactives(1, activeInactiveFilter, true);
+
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'No se pudo suspender al cliente');
+    }
+  };
+
   const loadInitialData = async () => {
     await Promise.all([
         fetchDemos(1, activeDemoFilter, true),
-        fetchActives(1, activeActiveFilter, true), // Usamos el filtro correcto
+        fetchActives(1, activeActiveFilter, true), 
         fetchInactives(1, activeInactiveFilter, true)
     ]);
   };
@@ -205,9 +224,12 @@ export const ClientProvider = ({ children }) => {
       actives, loadingActives, hasMoreActives, 
       fetchActives: () => fetchActives(activePage + 1), 
       refreshActives: () => fetchActives(1, activeActiveFilter, true),
-      applyActiveFilter, activeActiveFilter, // EXPORTAMOS
+      applyActiveFilter, activeActiveFilter,
       
-      inactives, loadingInactives, hasMoreInactives, fetchInactives: () => fetchInactives(inactivePage + 1), refreshInactives: () => fetchInactives(1, activeInactiveFilter, true), applyInactiveFilter, activeInactiveFilter
+      inactives, loadingInactives, hasMoreInactives, fetchInactives: () => fetchInactives(inactivePage + 1), refreshInactives: () => fetchInactives(1, activeInactiveFilter, true), applyInactiveFilter, activeInactiveFilter,
+      
+      reactivateClient,
+      suspendClient
     }}>
       {children}
     </ClientContext.Provider>

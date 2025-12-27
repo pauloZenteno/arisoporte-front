@@ -2,14 +2,21 @@ import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SELLER_MAP } from '../../utils/constants';
+import { openWhatsApp } from '../../utils/actions';
 
-const ActiveClientCard = React.memo(({ item, isExpanded, onPress }) => {
-  // Aseguramos que el ID sea string para buscar en el mapa
+// 1. Recibimos onSuspend
+const ActiveClientCard = React.memo(({ item, isExpanded, onPress, onSuspend }) => {
   const sellerIdStr = item.sellerId ? String(item.sellerId) : null;
   const sellerName = SELLER_MAP[sellerIdStr];
 
+  const handleContact = () => {
+    const message = `Hola ${item.name || 'Cliente'}, te contacto desde Ari Soporte respecto a tu cuenta activa.`;
+    openWhatsApp(item.phoneNumber, message);
+  };
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
+      {/* ... (resto del renderizado igual) ... */}
       <View style={styles.cardMainRow}>
         <View style={styles.infoContainer}>
           <Text style={styles.clientName} numberOfLines={1}>{item.businessName || item.name}</Text>
@@ -17,18 +24,11 @@ const ActiveClientCard = React.memo(({ item, isExpanded, onPress }) => {
         </View>
         
         <View style={styles.rightContainer}>
-            {/* BADGE ACTIVO (VERDE) */}
             <View style={styles.statusBadge}>
                 <Ionicons name="checkmark-circle" size={12} color="#10B981" style={{marginRight: 4}} />
                 <Text style={styles.statusText}>Activo</Text>
             </View>
-            
-            <Ionicons 
-                name={isExpanded ? "chevron-up" : "chevron-down"} 
-                size={20} 
-                color="#9CA3AF" 
-                style={{ marginTop: 8 }}
-            />
+            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color="#9CA3AF" style={{ marginTop: 8 }} />
         </View>
       </View>
 
@@ -36,7 +36,6 @@ const ActiveClientCard = React.memo(({ item, isExpanded, onPress }) => {
         <View style={styles.expandedContent}>
           <View style={styles.divider} />
           
-          {/* Fila del Vendedor (Solo si existe) */}
           {sellerName && (
             <View style={styles.metaRow}>
                 <Ionicons name="person-outline" size={16} color="#6B7280" />
@@ -45,13 +44,19 @@ const ActiveClientCard = React.memo(({ item, isExpanded, onPress }) => {
           )}
 
           <View style={styles.actionsContainer}>
-              <TouchableOpacity style={[styles.actionButton, styles.btnWhatsapp]}>
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.btnWhatsapp]}
+                onPress={handleContact}
+              >
                   <Ionicons name="logo-whatsapp" size={18} color="white" />
                   <Text style={styles.actionText}>Contactar</Text>
               </TouchableOpacity>
               
-              {/* BOTÓN SUSPENDER (ROJO) */}
-              <TouchableOpacity style={[styles.actionButton, styles.btnSuspend]}>
+              {/* 2. Asignamos la función al botón Suspender */}
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.btnSuspend]}
+                onPress={onSuspend}
+              >
                   <Ionicons name="ban" size={18} color="#EF4444" />
                   <Text style={[styles.actionText, styles.textSuspend]}>Suspender</Text>
               </TouchableOpacity>
@@ -63,17 +68,8 @@ const ActiveClientCard = React.memo(({ item, isExpanded, onPress }) => {
 });
 
 const styles = StyleSheet.create({
-  card: { 
-    backgroundColor: 'white', 
-    borderRadius: 16, 
-    padding: 20, 
-    marginBottom: 16, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.08, 
-    shadowRadius: 8, 
-    elevation: 4 
-  },
+  // ... (mismos estilos)
+  card: { backgroundColor: 'white', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
   cardMainRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   infoContainer: { flex: 1, marginRight: 10, justifyContent: 'center' },
   rightContainer: { alignItems: 'flex-end', justifyContent: 'flex-start' },

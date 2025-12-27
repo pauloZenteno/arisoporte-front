@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { 
-  StyleSheet, Text, View, FlatList, LayoutAnimation, Platform, UIManager, ActivityIndicator 
+  StyleSheet, Text, View, FlatList, LayoutAnimation, Platform, UIManager, ActivityIndicator, Alert 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useClients } from '../context/ClientContext';
 import ClientFilterHeader from '../components/ClientFilterHeader'; 
-import ActiveClientCard from '../components/cards/ActiveClientCard'; // Importamos la tarjeta
+import ActiveClientCard from '../components/cards/ActiveClientCard';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -15,9 +15,10 @@ export default function ActiveClientsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState(null);
 
+  // 1. Extraemos suspendClient del contexto
   const { 
     actives, loadingActives, fetchActives, refreshActives, hasMoreActives,
-    activeActiveFilter, applyActiveFilter 
+    activeActiveFilter, applyActiveFilter, suspendClient 
   } = useClients();
 
   const filteredData = actives ? actives.filter(item => 
@@ -29,6 +30,22 @@ export default function ActiveClientsScreen() {
   const handleExpand = (id) => { 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); 
       setExpandedId(expandedId === id ? null : id); 
+  };
+
+  // 2. Función de Confirmación
+  const handleSuspendPress = (id) => {
+    Alert.alert(
+        "Confirmar Suspensión",
+        "¿Estás seguro de que deseas suspender a este cliente? Dejará de tener acceso al sistema.",
+        [
+            { text: "Cancelar", style: "cancel" },
+            { 
+                text: "Suspender", 
+                style: "destructive", // En iOS pone el botón rojo
+                onPress: () => suspendClient(id) 
+            }
+        ]
+    );
   };
 
   return (
@@ -48,7 +65,9 @@ export default function ActiveClientsScreen() {
             <ActiveClientCard 
                 item={item} 
                 isExpanded={expandedId === item.id} 
-                onPress={() => handleExpand(item.id)} 
+                onPress={() => handleExpand(item.id)}
+                // 3. Pasamos la función a la tarjeta
+                onSuspend={() => handleSuspendPress(item.id)}
             />
         )}
         contentContainerStyle={styles.listContent}
