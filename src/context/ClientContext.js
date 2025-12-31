@@ -2,10 +2,12 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Alert } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { getClientsFiltered, updateClientStatus, updateClient } from '../services/clientService';
+import { getQuotes } from '../services/quoteService';
 
 const ClientContext = createContext();
 
 export const ClientProvider = ({ children }) => {
+  // --- ESTADOS DE CLIENTES (Lógica existente) ---
   const [demos, setDemos] = useState([]);
   const [loadingDemos, setLoadingDemos] = useState(false);
   const [demoPage, setDemoPage] = useState(1);
@@ -18,11 +20,8 @@ export const ClientProvider = ({ children }) => {
   const [loadingActives, setLoadingActives] = useState(false);
   const [activePage, setActivePage] = useState(1);
   const [hasMoreActives, setHasMoreActives] = useState(true);
-  
   const [activeActiveFilter, setActiveActiveFilter] = useState({ 
-    sortParam: 'CreatedAt', 
-    isDescending: true, 
-    sellerId: null 
+    sortParam: 'CreatedAt', isDescending: true, sellerId: null 
   });
 
   const [inactives, setInactives] = useState([]);
@@ -30,10 +29,12 @@ export const ClientProvider = ({ children }) => {
   const [inactivePage, setInactivePage] = useState(1);
   const [hasMoreInactives, setHasMoreInactives] = useState(true);
   const [activeInactiveFilter, setActiveInactiveFilter] = useState({ 
-    sortParam: 'TrialEndsAt', 
-    isDescending: false, 
-    sellerId: null 
+    sortParam: 'TrialEndsAt', isDescending: false, sellerId: null 
   });
+
+  // --- NUEVO ESTADO: COTIZACIONES ---
+  const [quotes, setQuotes] = useState([]);
+  const [loadingQuotes, setLoadingQuotes] = useState(false);
 
   const PAGE_SIZE = 10;
 
@@ -68,6 +69,7 @@ export const ClientProvider = ({ children }) => {
     }
   };
 
+  // --- FUNCIONES DE CLIENTES (Existentes) ---
   const fetchDemos = async (page = 1, filters = activeDemoFilter, shouldRefresh = false) => {
     if (loadingDemos || (!hasMoreDemos && !shouldRefresh)) return;
     setLoadingDemos(true);
@@ -91,19 +93,8 @@ export const ClientProvider = ({ children }) => {
   const fetchActives = async (page = 1, filters = activeActiveFilter, shouldRefresh = false) => {
     if (loadingActives || (!hasMoreActives && !shouldRefresh)) return;
     setLoadingActives(true);
-
-    let finalSort = filters.sortParam;
-    if (finalSort === 'TrialEndsAt') finalSort = 'CreatedAt'; 
-
-    const apiFilters = { 
-        statuses: 1,    
-        types: false,   
-        sortParam: finalSort, 
-        isDescending: filters.isDescending,
-        sellerId: filters.sellerId, 
-        filterActives: true
-    };
-
+    let finalSort = filters.sortParam === 'TrialEndsAt' ? 'CreatedAt' : filters.sortParam;
+    const apiFilters = { statuses: 1, types: false, sortParam: finalSort, isDescending: filters.isDescending, sellerId: filters.sellerId, filterActives: true };
     const { newItems, success } = await fetchGeneric('actives', page, apiFilters);
     
     if (shouldRefresh || page === 1) {
@@ -123,18 +114,8 @@ export const ClientProvider = ({ children }) => {
   const fetchInactives = async (page = 1, filters = activeInactiveFilter, shouldRefresh = false) => {
     if (loadingInactives || (!hasMoreInactives && !shouldRefresh)) return;
     setLoadingInactives(true);
-
-    let finalSort = filters.sortParam;
-    if (finalSort === 'TrialEndsAt') finalSort = 'CreatedAt'; 
-
-    const apiFilters = { 
-      statuses: 2, 
-      sortParam: finalSort, 
-      isDescending: filters.isDescending,
-      sellerId: filters.sellerId, 
-      filterActives: true 
-    };
-
+    let finalSort = filters.sortParam === 'TrialEndsAt' ? 'CreatedAt' : filters.sortParam;
+    const apiFilters = { statuses: 2, sortParam: finalSort, isDescending: filters.isDescending, sellerId: filters.sellerId, filterActives: true };
     const { newItems, success } = await fetchGeneric('inactives', page, apiFilters);
     
     if (shouldRefresh || page === 1) {
@@ -151,6 +132,23 @@ export const ClientProvider = ({ children }) => {
     setLoadingInactives(false);
   };
 
+  // --- NUEVA FUNCIÓN: FETCH QUOTES ---
+  const fetchQuotes = async () => {
+    setLoadingQuotes(true);
+    try {
+      const data = await getQuotes();
+      // Si el endpoint regresa un objeto con .data o .items, ajústalo aquí. 
+      // Asumiré que regresa un array directo o un objeto con lista.
+      const items = Array.isArray(data) ? data : (data.items || data.data || []);
+      setQuotes(items);
+    } catch (error) {
+      console.error("Error fetching quotes:", error);
+    } finally {
+      setLoadingQuotes(false);
+    }
+  };
+
+  // --- FILTROS Y ACCIONES (Existentes) ---
   const applyDemoFilter = (newSortParam, isDesc, newSellerId) => {
     const newFilters = { ...activeDemoFilter, sortParam: newSortParam ?? activeDemoFilter.sortParam, isDescending: isDesc ?? activeDemoFilter.isDescending, sellerId: newSellerId !== undefined ? newSellerId : activeDemoFilter.sellerId };
     setActiveDemoFilter(newFilters);
@@ -176,10 +174,8 @@ export const ClientProvider = ({ children }) => {
     try {
       await updateClientStatus(clientId, 1, false);
       Alert.alert('Éxito', 'Cliente reactivado correctamente');
-      
       fetchInactives(1, activeInactiveFilter, true);
       fetchActives(1, activeActiveFilter, true);
-
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'No se pudo reactivar al cliente');
@@ -190,10 +186,8 @@ export const ClientProvider = ({ children }) => {
     try {
       await updateClientStatus(clientId, 2, false);
       Alert.alert('Éxito', 'Cliente suspendido correctamente');
-      
       fetchActives(1, activeActiveFilter, true);
       fetchInactives(1, activeInactiveFilter, true);
-
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'No se pudo suspender al cliente');
@@ -202,18 +196,11 @@ export const ClientProvider = ({ children }) => {
 
   const activateDemo = async (client) => {
     try {
-      const updatedClientData = {
-        ...client,
-        isTrial: false
-      };
-
+      const updatedClientData = { ...client, isTrial: false };
       await updateClient(client.id, updatedClientData);
-      
       Alert.alert('Éxito', 'El cliente ha sido activado correctamente');
-
       fetchDemos(1, activeDemoFilter, true);
       fetchActives(1, activeActiveFilter, true);
-
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'No se pudo activar al cliente');
@@ -224,7 +211,8 @@ export const ClientProvider = ({ children }) => {
     await Promise.all([
         fetchDemos(1, activeDemoFilter, true),
         fetchActives(1, activeActiveFilter, true), 
-        fetchInactives(1, activeInactiveFilter, true)
+        fetchInactives(1, activeInactiveFilter, true),
+        fetchQuotes() // Cargamos cotizaciones al inicio también
     ]);
   };
 
@@ -247,6 +235,8 @@ export const ClientProvider = ({ children }) => {
       applyActiveFilter, activeActiveFilter,
       
       inactives, loadingInactives, hasMoreInactives, fetchInactives: () => fetchInactives(inactivePage + 1), refreshInactives: () => fetchInactives(1, activeInactiveFilter, true), applyInactiveFilter, activeInactiveFilter,
+      
+      quotes, loadingQuotes, fetchQuotes, // Exponemos lo nuevo
       
       reactivateClient,
       suspendClient,

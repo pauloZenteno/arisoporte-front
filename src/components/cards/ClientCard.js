@@ -6,6 +6,10 @@ import { openWhatsApp } from '../../utils/actions';
 import { useClients } from '../../context/ClientContext';
 
 const ClientCard = React.memo(({ item, isExpanded, onPress }) => {
+    // --- AGREGAR ESTA LÍNEA DE SEGURIDAD ---
+    if (!item) return null;
+    // ---------------------------------------
+
     const { activateDemo } = useClients();
 
     const trialEnd = new Date(item.trialEndsAt || Date.now());

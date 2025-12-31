@@ -1,11 +1,13 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native'; // Importamos Alert
 import { Ionicons } from '@expo/vector-icons';
 import { SELLER_MAP } from '../../utils/constants';
 import { openWhatsApp } from '../../utils/actions';
 
-// 1. Recibimos onSuspend
 const ActiveClientCard = React.memo(({ item, isExpanded, onPress, onSuspend }) => {
+  // --- VALIDACIÓN DE SEGURIDAD ---
+  if (!item) return null; 
+
   const sellerIdStr = item.sellerId ? String(item.sellerId) : null;
   const sellerName = SELLER_MAP[sellerIdStr];
 
@@ -14,9 +16,20 @@ const ActiveClientCard = React.memo(({ item, isExpanded, onPress, onSuspend }) =
     openWhatsApp(item.phoneNumber, message);
   };
 
+  // Confirmación para suspender
+  const handleSuspend = () => {
+    Alert.alert(
+        "Confirmar Suspensión",
+        `¿Estás seguro de suspender a ${item.businessName || 'este cliente'}?`,
+        [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Suspender", style: 'destructive', onPress: onSuspend }
+        ]
+    );
+  };
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
-      {/* ... (resto del renderizado igual) ... */}
       <View style={styles.cardMainRow}>
         <View style={styles.infoContainer}>
           <Text style={styles.clientName} numberOfLines={1}>{item.businessName || item.name}</Text>
@@ -52,10 +65,9 @@ const ActiveClientCard = React.memo(({ item, isExpanded, onPress, onSuspend }) =
                   <Text style={styles.actionText}>Contactar</Text>
               </TouchableOpacity>
               
-              {/* 2. Asignamos la función al botón Suspender */}
               <TouchableOpacity 
                 style={[styles.actionButton, styles.btnSuspend]}
-                onPress={onSuspend}
+                onPress={handleSuspend} // Usamos la función con alerta
               >
                   <Ionicons name="ban" size={18} color="#EF4444" />
                   <Text style={[styles.actionText, styles.textSuspend]}>Suspender</Text>
@@ -68,7 +80,6 @@ const ActiveClientCard = React.memo(({ item, isExpanded, onPress, onSuspend }) =
 });
 
 const styles = StyleSheet.create({
-  // ... (mismos estilos)
   card: { backgroundColor: 'white', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
   cardMainRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   infoContainer: { flex: 1, marginRight: 10, justifyContent: 'center' },

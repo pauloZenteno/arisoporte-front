@@ -1,16 +1,31 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SELLER_MAP } from '../../utils/constants';
 import { openWhatsApp } from '../../utils/actions';
 
 const InactiveClientCard = React.memo(({ item, isExpanded, onPress, onReactivate }) => {
+  // --- VALIDACIÓN DE SEGURIDAD ---
+  if (!item) return null;
+
   const sellerIdStr = item.sellerId ? String(item.sellerId) : null;
   const sellerName = SELLER_MAP[sellerIdStr];
 
   const handleContact = () => {
     const message = `Hola ${item.name || 'Cliente'}, te contacto desde Ari Soporte respecto a tu cuenta suspendida.`;
     openWhatsApp(item.phoneNumber, message);
+  };
+
+  // Confirmación para reactivar
+  const handleReactivate = () => {
+      Alert.alert(
+          "Confirmar Reactivación",
+          `¿Deseas reactivar la cuenta de ${item.businessName || 'este cliente'}?`,
+          [
+              { text: "Cancelar", style: "cancel" },
+              { text: "Reactivar", onPress: onReactivate }
+          ]
+      );
   };
 
   return (
@@ -22,7 +37,6 @@ const InactiveClientCard = React.memo(({ item, isExpanded, onPress, onReactivate
         </View>
         
         <View style={styles.rightContainer}>
-            {/* CAMBIO AQUI: Badge Suspendido (Naranja) */}
             <View style={styles.statusBadge}>
                 <Ionicons name="alert-circle" size={12} color="#EA580C" style={{marginRight: 4}} />
                 <Text style={styles.statusText}>Suspendido</Text>
@@ -59,7 +73,7 @@ const InactiveClientCard = React.memo(({ item, isExpanded, onPress, onReactivate
               
               <TouchableOpacity 
                 style={[styles.actionButton, styles.btnReactivate]}
-                onPress={onReactivate}
+                onPress={handleReactivate}
               >
                   <Ionicons name="refresh" size={18} color="#2b5cb5" />
                   <Text style={[styles.actionText, styles.textReactivate]}>Reactivar</Text>
@@ -72,38 +86,14 @@ const InactiveClientCard = React.memo(({ item, isExpanded, onPress, onReactivate
 });
 
 const styles = StyleSheet.create({
-  card: { 
-    backgroundColor: 'white', 
-    borderRadius: 16, 
-    padding: 20, 
-    marginBottom: 16, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.08, 
-    shadowRadius: 8, 
-    elevation: 4 
-  },
+  card: { backgroundColor: 'white', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
   cardMainRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   infoContainer: { flex: 1, marginRight: 10, justifyContent: 'center' },
   rightContainer: { alignItems: 'flex-end', justifyContent: 'flex-start' },
   clientName: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 },
   clientAlias: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-  
-  // CAMBIO EN ESTILOS: Colores Naranjas
-  statusBadge: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#FFF7ED', // Fondo naranja muy claro
-    paddingHorizontal: 10, 
-    paddingVertical: 4, 
-    borderRadius: 20 
-  }, 
-  statusText: { 
-    color: '#EA580C', // Naranja vibrante
-    fontSize: 11, 
-    fontWeight: '700' 
-  },
-  
+  statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF7ED', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }, 
+  statusText: { color: '#EA580C', fontSize: 11, fontWeight: '700' },
   expandedContent: { marginTop: 20 },
   divider: { height: 1, backgroundColor: '#F3F4F6', marginBottom: 15 },
   metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
