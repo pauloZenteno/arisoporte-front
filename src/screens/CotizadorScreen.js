@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Alert, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useClients } from '../context/ClientContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,26 +12,46 @@ import { getQuoteById, downloadQuotePdf } from '../services/quoteService';
 const CotizadorScreen = ({ navigation }) => {
   const { quotes, loadingQuotes, hasMoreQuotes, fetchQuotes, refreshQuotes } = useClients();
 
+  // 1. Ocultar header nativo
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  // --- MEDIDAS DE LAYOUT ---
   const [headerHeight, setHeaderHeight] = useState(0);      
   const [controlsHeight, setControlsHeight] = useState(0); 
+  
+  const scrollY = useRef(new Animated.Value(0)).current;
   const [downloadingId, setDownloadingId] = useState(null);
 
-  const scrollY = useRef(new Animated.Value(0)).current;
-  
-  const clampedScrollY = scrollY.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-    extrapolateLeft: 'clamp', 
-  });
+  // --- LÓGICA DE FILTROS COLAPSABLES ---
+  const { translateY, onScroll } = useMemo(() => {
+    const heightToHide = controlsHeight || 1; 
 
-  const diffClamp = Animated.diffClamp(clampedScrollY, 0, controlsHeight || 1);
-  
-  const translateY = diffClamp.interpolate({
-    inputRange: [0, controlsHeight || 1],
-    outputRange: [0, -(controlsHeight || 1)], 
-    extrapolate: 'clamp'
-  });
+    const clampedScrollY = scrollY.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 1],
+        extrapolateLeft: 'clamp',
+    });
 
+    const diffClamp = Animated.diffClamp(clampedScrollY, 0, heightToHide);
+
+    const translate = diffClamp.interpolate({
+        inputRange: [0, heightToHide],
+        outputRange: [0, -heightToHide],
+        extrapolate: 'clamp',
+    });
+
+    return {
+        translateY: translate,
+        onScroll: Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+        )
+    };
+  }, [controlsHeight, scrollY]);
+
+  // --- ESTADOS DE DATOS ---
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState(''); 
   const [activeFilters, setActiveFilters] = useState({ 
@@ -40,7 +60,8 @@ const CotizadorScreen = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      refreshQuotes();
+      // Opcional: Si quieres que siempre refresque al entrar
+      // refreshQuotes();
     }, [])
   );
 
@@ -48,13 +69,13 @@ const CotizadorScreen = ({ navigation }) => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
     }, 400); 
-
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
   const filteredData = useMemo(() => {
     let data = [...quotes];
     
+    // Filtrado local
     if (debouncedQuery) {
       const query = debouncedQuery.toLowerCase();
       data = data.filter(item => 
@@ -81,35 +102,22 @@ const CotizadorScreen = ({ navigation }) => {
   }, [quotes, debouncedQuery, activeFilters]);
 
   const handleApplyFilter = (sortParam, isDescending, sellerId) => {
-    setActiveFilters(prev => ({
-      ...prev,
-      sortParam: sortParam !== undefined ? sortParam : prev.sortParam,
-      isDescending: isDescending !== undefined ? isDescending : prev.isDescending,
-      sellerId: sellerId !== undefined ? sellerId : prev.sellerId
-    }));
+    setActiveFilters(prev => ({ ...prev, sortParam, isDescending, sellerId }));
   };
 
   const formatCurrency = (amount) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
-  
-  const handleCreate = () => {
-    navigation.navigate('QuoteCreate');
-  };
-
-  const handleEdit = (id) => {
-    navigation.navigate('QuoteCreate', { id });
-  };
+  const handleCreate = () => navigation.navigate('QuoteCreate');
+  const handleEdit = (id) => navigation.navigate('QuoteCreate', { id });
 
   const handleDownload = async (id) => {
     if (downloadingId) return; 
     setDownloadingId(id);
-    
     try {
       Alert.alert("Generando PDF", "Descargando cotización, por favor espere...");
       const fullQuoteData = await getQuoteById(id);
       await downloadQuotePdf(fullQuoteData);
     } catch (error) {
       Alert.alert("Error", "No se pudo descargar el archivo.");
-      console.error(error);
     } finally {
       setDownloadingId(null);
     }
@@ -125,6 +133,50 @@ const CotizadorScreen = ({ navigation }) => {
     />
   ), [downloadingId]);
 
+  const renderListHeader = () => (
+    <View style={styles.listHeaderContainer}>
+        <TouchableOpacity style={styles.createButton} onPress={handleCreate} activeOpacity={0.8}>
+            <View style={styles.createIconBg}>
+                <Ionicons name="add" size={20} color="white" />
+            </View>
+            <Text style={styles.createButtonText}>Crear Cotización</Text>
+        </TouchableOpacity>
+    </View>
+  );
+
+  // --- FOOTER: Botón de "Cargar Más" ---
+  const renderFooter = () => {
+    // 1. Si está cargando la paginación, mostrar spinner
+    if (loadingQuotes && quotes.length > 0) {
+        return (
+            <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color="#2b5cb5" />
+                <Text style={styles.footerText}>Cargando más...</Text>
+            </View>
+        );
+    }
+
+    // 2. Si hay más datos por cargar, mostrar el botón
+    if (hasMoreQuotes && quotes.length > 0) {
+        return (
+            <TouchableOpacity 
+                style={styles.loadMoreButton} 
+                onPress={fetchQuotes}
+                activeOpacity={0.7}
+            >
+                <Text style={styles.loadMoreText}>Cargar más cotizaciones</Text>
+                <Ionicons name="chevron-down-circle-outline" size={18} color="#2b5cb5" style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
+        );
+    }
+
+    // 3. Si llegamos al final, un espacio vacío
+    return <View style={{ height: 40 }} />;
+  };
+
+  // Verificación de layout
+  const layoutReady = headerHeight > 0 && controlsHeight > 0;
+
   return (
     <View style={styles.container}>
       
@@ -139,81 +191,70 @@ const CotizadorScreen = ({ navigation }) => {
         style={[
             styles.collapsibleWrapper, 
             { 
-                opacity: headerHeight > 0 ? 1 : 0, 
                 top: headerHeight, 
-                transform: [{ translateY }] 
+                transform: [{ translateY }],
+                opacity: layoutReady ? 1 : 0 
             }
         ]}
+        onLayout={(e) => setControlsHeight(e.nativeEvent.layout.height)}
       >
-          <View onLayout={(e) => setControlsHeight(e.nativeEvent.layout.height)}>
-              <View style={styles.controlsContent}>
-                  
-                  <View style={{ marginBottom: 10 }}>
-                    <ClientFilterHeader 
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery} 
-                        filters={activeFilters}
-                        onApplyFilter={handleApplyFilter}
-                        titleSellers="Vendedores" 
-                    />
-                  </View>
-
-                  <TouchableOpacity style={styles.createButton} onPress={handleCreate} activeOpacity={0.8}>
-                      <View style={styles.createIconBg}>
-                          <Ionicons name="add" size={20} color="white" />
-                      </View>
-                      <Text style={styles.createButtonText}>Crear Cotización</Text>
-                  </TouchableOpacity>
-
-              </View>
+          <View style={styles.controlsContent}>
+              <ClientFilterHeader 
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery} 
+                  filters={activeFilters}
+                  onApplyFilter={handleApplyFilter}
+                  titleSellers="Vendedores" 
+              />
           </View>
       </Animated.View>
 
-      <Animated.FlatList
-        data={filteredData}
-        keyExtractor={(item) => item?.id?.toString() || Math.random().toString()}
-        renderItem={renderItem}
-        
-        contentContainerStyle={{ 
-            paddingTop: headerHeight + controlsHeight + 20, 
-            paddingBottom: 100, 
-            paddingHorizontal: 20 
-        }}
-        
-        refreshing={loadingQuotes}
-        onRefresh={refreshQuotes}
-        onEndReached={hasMoreQuotes ? fetchQuotes : null}
-        onEndReachedThreshold={0.5}
+      {layoutReady ? (
+        <Animated.FlatList
+            data={filteredData}
+            keyExtractor={(item) => item?.id?.toString() || Math.random().toString()}
+            renderItem={renderItem}
+            ListHeaderComponent={renderListHeader}
+            
+            // Usamos renderFooter para manejar el botón de carga
+            ListFooterComponent={renderFooter}
+            
+            contentContainerStyle={{ 
+                paddingTop: headerHeight + controlsHeight + 10, 
+                // AUMENTADO: Padding inferior generoso para librar el BottomNav
+                paddingBottom: 120, 
+                paddingHorizontal: 20 
+            }}
+            
+            refreshing={loadingQuotes}
+            onRefresh={refreshQuotes}
+            
+            // Quitamos onEndReached automático para evitar glitches
+            onEndReached={null}
+            
+            initialNumToRender={8}
+            maxToRenderPerBatch={10}
+            windowSize={5} 
+            removeClippedSubviews={true} 
+            
+            onScroll={onScroll}
+            scrollEventThrottle={16}
 
-        initialNumToRender={8}
-        maxToRenderPerBatch={10}
-        windowSize={5} 
-        removeClippedSubviews={true} 
-        updateCellsBatchingPeriod={50}
-        
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
-
-        ListEmptyComponent={
-          <View style={styles.center}>
-              <Ionicons name="document-text-outline" size={48} color="#E5E7EB" />
-              <Text style={styles.emptyText}>
-                  {debouncedQuery ? 'No hay resultados.' : 'No hay cotizaciones.'}
-              </Text>
-          </View>
-        }
-        
-        ListFooterComponent={
-            (loadingQuotes && quotes.length > 0) ? (
-                <View style={{ paddingVertical: 20 }}>
-                    <ActivityIndicator size="small" color="#2b5cb5" />
+            ListEmptyComponent={
+                <View style={styles.center}>
+                    <Ionicons name="document-text-outline" size={48} color="#E5E7EB" />
+                    <Text style={styles.emptyText}>
+                        {debouncedQuery ? 'No hay resultados.' : 'No hay cotizaciones.'}
+                    </Text>
                 </View>
-            ) : null
-        }
-      />
+            }
+        />
+      ) : (
+         <View style={styles.centerLoading}>
+            <ActivityIndicator size="large" color="#2b5cb5" />
+         </View>
+      )}
+
     </View>
   );
 };
@@ -226,20 +267,26 @@ const styles = StyleSheet.create({
     top: 0, left: 0, right: 0,
     zIndex: 100, 
     elevation: 10,
-    backgroundColor: 'transparent', 
+    backgroundColor: '#F9FAFB', 
   },
 
   collapsibleWrapper: {
     position: 'absolute',
     left: 0, right: 0,
     zIndex: 50, 
+    elevation: 5,
     backgroundColor: '#F9FAFB', 
   },
   
   controlsContent: {
     paddingHorizontal: 0, 
-    paddingTop: 15, 
-    paddingBottom: 10, 
+    paddingTop: 10, 
+    paddingBottom: 5, 
+  },
+
+  listHeaderContainer: {
+    marginBottom: 15,
+    marginTop: 5
   },
 
   createButton: {
@@ -252,8 +299,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#d1fae5', 
-    marginBottom: 5,
-    marginHorizontal: 20, 
     shadowColor: '#15c899',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -278,6 +323,51 @@ const styles = StyleSheet.create({
 
   center: { marginTop: 100, justifyContent: 'center', alignItems: 'center' },
   emptyText: { marginTop: 10, color: '#9CA3AF', fontSize: 16 },
+
+  centerLoading: {
+      position: 'absolute',
+      left: 0, right: 0, top: 0, bottom: 0,
+      backgroundColor: '#F9FAFB',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 999
+  },
+
+  // ESTILOS FOOTER
+  loadMoreButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'white',
+      paddingVertical: 12,
+      marginVertical: 20,
+      marginHorizontal: 40,
+      borderRadius: 25,
+      borderWidth: 1,
+      borderColor: '#2b5cb5',
+      shadowColor: '#2b5cb5',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2
+  },
+  loadMoreText: {
+      color: '#2b5cb5',
+      fontWeight: '700',
+      fontSize: 14
+  },
+  footerLoader: {
+      paddingVertical: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 10
+  },
+  footerText: {
+      color: '#6B7280',
+      fontSize: 13,
+      fontWeight: '500'
+  }
 });
 
 export default CotizadorScreen;
