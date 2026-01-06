@@ -6,7 +6,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
-// Importaciones de Pantallas
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ClientsScreen from './src/screens/ClientsScreen';
@@ -15,10 +14,7 @@ import CotizadorScreen from './src/screens/CotizadorScreen';
 import QuoteCreateScreen from './src/screens/QuoteCreateScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
 
-// Importamos los nuevos detalles de reportes
-// AJUSTA LA RUTA si decidiste ponerlos en una subcarpeta 'reports' o directo en 'screens'
-import GeneralReportScreen from './src/screens/reports/GeneralReportScreen'; 
-import DemoReportScreen from './src/screens/reports/DemoReportScreen';
+import GeneralReportScreen from './src/screens/reports/GeneralReportScreen';
 import UsageReportScreen from './src/screens/reports/UsageReportScreen';
 
 import Header from './src/components/Header';
@@ -85,37 +81,8 @@ export default function App() {
           <Stack.Screen name="MainTabs" component={MainTabs} />
           <Stack.Screen name="QuoteCreate" component={QuoteCreateScreen} />
           
-          {/* --- NUEVAS PANTALLAS DE REPORTES --- */}
-          <Stack.Screen 
-            name="GeneralReport" 
-            component={GeneralReportScreen} 
-            options={{ 
-              headerShown: true, 
-              title: 'Reporte General',
-              headerBackTitleVisible: false,
-              headerTintColor: '#111827'
-            }} 
-          />
-          <Stack.Screen 
-            name="DemoReport" 
-            component={DemoReportScreen} 
-            options={{ 
-              headerShown: true, 
-              title: 'Clientes en Demo',
-              headerBackTitleVisible: false,
-              headerTintColor: '#111827'
-            }} 
-          />
-          <Stack.Screen 
-            name="UsageReport" 
-            component={UsageReportScreen} 
-            options={{ 
-              headerShown: true, 
-              title: 'Reporte de Inactividad',
-              headerBackTitleVisible: false,
-              headerTintColor: '#111827'
-            }} 
-          />
+          <Stack.Screen name="GeneralReport" component={GeneralReportScreen} />
+          <Stack.Screen name="UsageReport" component={UsageReportScreen} />
 
         </Stack.Navigator>
       </NavigationContainer>

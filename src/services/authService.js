@@ -44,17 +44,11 @@ const clearAllData = async () => {
   await SecureStore.deleteItemAsync('userId');
 };
 
-// Esta función la usa el botón "Cambiar usuario" del Login (Borra todo)
 export const clearSession = async () => {
   await clearAllData();
 };
 
-// Esta función la usa el botón "Cerrar Sesión" de Ajustes
 export const logout = async () => {
-  // ¡CAMBIO CLAVE!
-  // Ya NO borramos los datos aquí. 
-  // Al no hacer nada, mantenemos el token y la info del usuario.
-  // La app navegará al Login, y como los datos existen, mostrará "Hola de nuevo".
   return; 
 };
 

@@ -7,6 +7,7 @@ import { getQuoteById, createQuote, updateQuote } from '../services/quoteService
 import { useQuoteCalculator } from '../hooks/useQuoteCalculator';
 import { INITIAL_MODULES, HARDCODED_PRODUCTS, MODULE_IDS } from '../utils/quoteConstants';
 import * as SecureStore from 'expo-secure-store';
+import { useClients } from '../context/ClientContext';
 
 const GeneralInfoTab = ({ data, onChange }) => (
     <View style={styles.tabContent}>
@@ -260,6 +261,7 @@ export default function QuoteCreateScreen() {
     const [schemes, setSchemes] = useState([]);
     const [activeTab, setActiveTab] = useState(0); 
 
+    const { userProfile } = useClients(); 
     const { calculateTotals, calculateProducts } = useQuoteCalculator(schemes);
 
     const [form, setForm] = useState({
@@ -335,9 +337,14 @@ export default function QuoteCreateScreen() {
                         return next;
                     });
                 } else {
-                    const userInfoStr = await SecureStore.getItemAsync('userInfo');
-                    if (userInfoStr) {
-                        const user = JSON.parse(userInfoStr);
+                    let user = userProfile;
+                    
+                    if (!user) {
+                        const userInfoStr = await SecureStore.getItemAsync('userInfo');
+                        if (userInfoStr) user = JSON.parse(userInfoStr);
+                    }
+
+                    if (user) {
                         const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
                         setForm(prev => ({ 
                             ...prev, 
@@ -355,7 +362,7 @@ export default function QuoteCreateScreen() {
             }
         };
         init();
-    }, [id]);
+    }, [id, userProfile]);
 
     useEffect(() => {
         if (schemes.length > 0 && !loading) {

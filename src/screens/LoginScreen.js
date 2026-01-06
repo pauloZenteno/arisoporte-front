@@ -19,7 +19,7 @@ export default function LoginScreen({ navigation }) {
   const [savedUser, setSavedUser] = useState(null);
   const [hasBiometrics, setHasBiometrics] = useState(false);
 
-  const { loadInitialData } = useClients();
+  const { loadInitialData, setUserProfile } = useClients();
 
   useEffect(() => {
     checkUserSession();
@@ -31,7 +31,6 @@ export default function LoginScreen({ navigation }) {
       setHasBiometrics(bioSupported);
 
       const user = await getUserInfo();
-      // Verificamos que el usuario guardado tenga la estructura correcta
       if (user && user.firstName) {
         setSavedUser(user);
       }
@@ -55,15 +54,19 @@ export default function LoginScreen({ navigation }) {
 
       await setSession(accessToken, refreshToken);
       
-      // GUARDAMOS EL USUARIO EXPLÍCITAMENTE
-      // Usamos el 'username' del estado (lo que escribió el usuario)
-      await setUserInfo({ 
+      const userData = { 
         id, 
         firstName, 
         lastName, 
         jobPosition, 
-        username: username // <--- ESTO ES CRUCIAL
-      });
+        username: username 
+      };
+
+      setUserProfile(userData);
+
+      if (rememberMe) {
+        await setUserInfo(userData);
+      }
 
       loadInitialData();
       navigation.replace('MainTabs');
@@ -82,7 +85,6 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    // Validación de seguridad: Si por alguna razón la sesión vieja no tiene username
     if (!savedUser || !savedUser.username) {
       Alert.alert(
         'Actualización requerida', 
@@ -94,17 +96,21 @@ export default function LoginScreen({ navigation }) {
     setIsLoading(true);
 
     try {
-      // Usamos el username guardado + la contraseña que acaba de escribir
       const data = await login(savedUser.username, password);
       const { accessToken, refreshToken, id, firstName, lastName, jobPosition } = data;
 
       await setSession(accessToken, refreshToken);
       
-      // Refrescamos la info guardada por si algo cambió
-      await setUserInfo({ 
-        id, firstName, lastName, jobPosition, 
+      const userData = { 
+        id, 
+        firstName, 
+        lastName, 
+        jobPosition, 
         username: savedUser.username 
-      });
+      };
+
+      setUserProfile(userData);
+      await setUserInfo(userData);
 
       loadInitialData();
       navigation.replace('MainTabs');
@@ -121,6 +127,11 @@ export default function LoginScreen({ navigation }) {
     const success = await authenticateWithBiometrics();
     if (success) {
       setIsLoading(true);
+      
+      if (savedUser) {
+        setUserProfile(savedUser);
+      }
+
       loadInitialData();
       setTimeout(() => {
         navigation.replace('MainTabs');
@@ -135,7 +146,6 @@ export default function LoginScreen({ navigation }) {
     setPassword('');
   };
 
-  // --- RENDERIZADO: MODO BIENVENIDA ---
   if (savedUser) {
     return (
       <View style={styles.mainContainer}>
@@ -148,7 +158,6 @@ export default function LoginScreen({ navigation }) {
           style={styles.verticalContainer}
         >
           
-          {/* 1. LOGO */}
           <View style={styles.topSection}>
             <Image 
               source={require('../assets/logo_arisoporte.png')}
@@ -156,7 +165,6 @@ export default function LoginScreen({ navigation }) {
             />
           </View>
 
-          {/* 2. SALUDO */}
           <View style={styles.middleSection}>
             <Text style={styles.greetingLabel}>Hola de nuevo,</Text>
             <Text style={styles.greetingName}>
@@ -164,7 +172,6 @@ export default function LoginScreen({ navigation }) {
             </Text>
           </View>
 
-          {/* 3. ZONA DE ACCESO */}
           <View style={styles.bottomSection}>
             
             {hasBiometrics && (
@@ -181,7 +188,6 @@ export default function LoginScreen({ navigation }) {
               </TouchableOpacity>
             )}
 
-            {/* INPUT DE SOLO CONTRASEÑA */}
             <View style={styles.quickLoginContainer}>
               <View style={styles.passwordInputWrapper}>
                 <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={{marginLeft: 10}} />
@@ -222,7 +228,6 @@ export default function LoginScreen({ navigation }) {
     );
   }
 
-  // --- RENDERIZADO: MODO LOGIN NORMAL ---
   return (
     <View style={styles.mainContainer}>
       <View style={styles.backgroundContainer}>
@@ -318,7 +323,6 @@ const styles = StyleSheet.create({
   loginButtonDisabled: { backgroundColor: '#a5d6b9' },
   loginButtonText: { color: 'white', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
 
-  // --- ESTILOS VERTICALES (MODO BIENVENIDA) ---
   verticalContainer: {
     flex: 1,
     justifyContent: 'center',

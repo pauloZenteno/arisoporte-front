@@ -6,8 +6,6 @@ import {
     FlatList, 
     TouchableOpacity, 
     ActivityIndicator, 
-    Linking, 
-    Alert, 
     TextInput, 
     Platform, 
     StatusBar 
@@ -15,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { getClientsUsageReport } from '../../services/reportService';
+import { openWhatsApp } from '../../utils/actions';
 
 const ClientUsageRow = React.memo(({ item, onContact }) => {
     
@@ -83,6 +82,7 @@ export default function UsageReportScreen() {
   const [data, setData] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('desc'); 
+  const [typeFilter, setTypeFilter] = useState('all');
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -101,18 +101,8 @@ export default function UsageReportScreen() {
   };
 
   const handleContact = useCallback((phoneNumber, name) => {
-    if (!phoneNumber) {
-        Alert.alert("Falta Información", "El cliente no tiene número registrado.");
-        return;
-    }
-    const cleanNumber = phoneNumber.replace(/[^\w\s]/gi, '').replace(/\s/g, '');
     const message = `Hola ${name || ''}, notamos que no han tenido actividad reciente en la plataforma Ari. ¿Podemos ayudarles en algo?`;
-    const url = `whatsapp://send?phone=${cleanNumber}&text=${encodeURIComponent(message)}`;
-    
-    Linking.canOpenURL(url).then(supported => {
-        if (supported) Linking.openURL(url);
-        else Alert.alert("Error", "WhatsApp no instalado.");
-    });
+    openWhatsApp(phoneNumber, message);
   }, []);
 
   const toggleSort = () => {
@@ -121,6 +111,13 @@ export default function UsageReportScreen() {
 
   const filteredData = useMemo(() => {
     let result = [...data];
+
+    if (typeFilter === 'clients') {
+        result = result.filter(item => item.isTrial === false);
+    } else if (typeFilter === 'demos') {
+        result = result.filter(item => item.isTrial === true);
+    }
+
     if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
         result = result.filter(item => 
@@ -133,7 +130,21 @@ export default function UsageReportScreen() {
         const diff = (a.daysWithoutUse || 0) - (b.daysWithoutUse || 0);
         return sortOrder === 'asc' ? diff : -diff;
     });
-  }, [data, searchQuery, sortOrder]);
+  }, [data, searchQuery, sortOrder, typeFilter]);
+
+  const FilterTab = ({ label, value }) => {
+      const isActive = typeFilter === value;
+      return (
+          <TouchableOpacity 
+              onPress={() => setTypeFilter(value)} 
+              style={[styles.filterTab, isActive && styles.filterTabActive]}
+          >
+              <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
+                  {label}
+              </Text>
+          </TouchableOpacity>
+      );
+  };
 
   return (
     <View style={styles.container}>
@@ -176,6 +187,12 @@ export default function UsageReportScreen() {
             </TouchableOpacity>
         </View>
 
+        <View style={styles.tabsContainer}>
+            <FilterTab label="Todos" value="all" />
+            <FilterTab label="Clientes" value="clients" />
+            <FilterTab label="Demos" value="demos" />
+        </View>
+
         {loading ? (
             <View style={styles.center}>
                 <ActivityIndicator size="large" color="#2b5cb5" />
@@ -213,7 +230,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     marginTop: 50 
   },
-  
   customHeader: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -231,12 +247,11 @@ const styles = StyleSheet.create({
 
   filterContainer: {
     padding: 12,
+    paddingBottom: 8,
     backgroundColor: 'white',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB'
+    gap: 10
   },
   searchBar: {
     flex: 1,
@@ -259,6 +274,37 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB'
   },
   sortText: { fontSize: 12, fontWeight: '600', color: '#4B5563' },
+
+  tabsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    backgroundColor: 'white',
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB'
+  },
+  filterTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: 'transparent'
+  },
+  filterTabActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#2b5cb5'
+  },
+  filterTabText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280'
+  },
+  filterTabTextActive: {
+    color: '#2b5cb5',
+    fontWeight: '700'
+  },
 
   listContent: { padding: 16, paddingBottom: 40 },
   

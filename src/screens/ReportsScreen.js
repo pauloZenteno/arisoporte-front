@@ -26,25 +26,7 @@ export default function ReportsScreen() {
   return (
     <ScrollView style={styles.container}>
       
-      {/* NUEVO REPORTE */}
-      <ReportOptionCard 
-        title="Días sin Uso"
-        description="Identifica clientes inactivos para seguimiento."
-        icon="alert-circle"
-        color="#F59E0B"
-        bg="#FFFBEB"
-        onPress={() => navigation.navigate('UsageReport')}
-      />
-
-      <ReportOptionCard 
-        title="Clientes en Demo"
-        description="Seguimiento de pruebas activas y vencimientos."
-        icon="timer"
-        color="#15c899"
-        bg="#ECFDF5"
-        onPress={() => navigation.navigate('DemoReport')}
-      />
-      
+      {/* 1. REPORTE GENERAL (Dashboard) */}
       <ReportOptionCard 
         title="Reporte General"
         description="Vista global de clientes, estatus y cartera."
@@ -52,6 +34,16 @@ export default function ReportsScreen() {
         color="#2b5cb5"
         bg="#EFF6FF"
         onPress={() => navigation.navigate('GeneralReport')}
+      />
+
+      {/* 2. REPORTE OPERATIVO (Inactividad) */}
+      <ReportOptionCard 
+        title="Días sin Uso"
+        description="Identifica clientes inactivos para seguimiento."
+        icon="alert-circle"
+        color="#F59E0B"
+        bg="#FFFBEB"
+        onPress={() => navigation.navigate('UsageReport')}
       />
 
     </ScrollView>

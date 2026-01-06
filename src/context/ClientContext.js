@@ -3,10 +3,13 @@ import { Alert } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { getClientsFiltered, updateClientStatus, updateClient } from '../services/clientService';
 import { getQuotes } from '../services/quoteService';
+import { getUserInfo } from '../services/authService';
 
 const ClientContext = createContext();
 
 export const ClientProvider = ({ children }) => {
+  const [userProfile, setUserProfile] = useState(null);
+
   const [demos, setDemos] = useState([]);
   const [loadingDemos, setLoadingDemos] = useState(false);
   const [demoPage, setDemoPage] = useState(1);
@@ -217,6 +220,12 @@ export const ClientProvider = ({ children }) => {
     const token = await SecureStore.getItemAsync('accessToken');
     if (!token) return;
 
+    try {
+        const savedUser = await getUserInfo();
+        if (savedUser) setUserProfile(savedUser);
+    } catch (e) {
+    }
+
     await Promise.all([
         fetchDemos(1, activeDemoFilter, true),
         fetchActives(1, activeActiveFilter, true), 
@@ -237,6 +246,7 @@ export const ClientProvider = ({ children }) => {
 
   return (
     <ClientContext.Provider value={{ 
+      userProfile, setUserProfile,
       loadInitialData,
       demos, loadingDemos, hasMoreDemos, fetchDemos: () => fetchDemos(demoPage + 1), refreshDemos: () => fetchDemos(1, activeDemoFilter, true), applyDemoFilter, activeDemoFilter,
       actives, loadingActives, hasMoreActives, fetchActives: () => fetchActives(activePage + 1), refreshActives: () => fetchActives(1, activeActiveFilter, true), applyActiveFilter, activeActiveFilter,

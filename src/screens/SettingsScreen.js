@@ -1,31 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { getUserInfo, logout } from '../services/authService';
+import { logout } from '../services/authService';
+import { useClients } from '../context/ClientContext';
 
 export default function SettingsScreen({ navigation }) {
-  const [userInfo, setUserInfoState] = useState(null);
-
-  useEffect(() => {
-    const loadProfileData = async () => {
-      try {
-        const user = await getUserInfo();
-        if (user) {
-          setUserInfoState(user);
-        }
-      } catch (error) {
-        console.error('Error cargando perfil:', error);
-      }
-    };
-
-    loadProfileData();
-  }, []);
+  const { userProfile } = useClients();
 
   const getInitials = () => {
-    if (!userInfo) return '';
-    const first = userInfo.firstName ? userInfo.firstName.charAt(0).toUpperCase() : '';
-    const last = userInfo.lastName ? userInfo.lastName.charAt(0).toUpperCase() : '';
+    if (!userProfile) return '';
+    const first = userProfile.firstName ? userProfile.firstName.charAt(0).toUpperCase() : '';
+    const last = userProfile.lastName ? userProfile.lastName.charAt(0).toUpperCase() : '';
     return `${first}${last}`;
   };
 
@@ -70,10 +56,10 @@ export default function SettingsScreen({ navigation }) {
             </View>
             
             <Text style={styles.nameText}>
-                {userInfo ? `${userInfo.firstName} ${userInfo.lastName}` : 'Cargando...'}
+                {userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : 'Usuario'}
             </Text>
             <Text style={styles.jobText}>
-                {userInfo ? userInfo.jobPosition : ''}
+                {userProfile ? userProfile.jobPosition : ''}
             </Text>
         </View>
 
