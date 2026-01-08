@@ -429,6 +429,39 @@ export default function QuoteCreateScreen() {
         setSaving(true);
         try {
             const payload = { ...form };
+
+            payload.isActive = true;
+
+            if (!id) {
+                delete payload.id; 
+                delete payload.folio;
+                delete payload.created;
+            }
+
+            payload.monthlyDiscount = Number(payload.monthlyDiscount) || 0;
+            payload.anualDiscount = Number(payload.anualDiscount) || 0;
+            payload.months = Number(payload.months) || 1;
+            payload.numberOfExtraUsers = Number(payload.numberOfExtraUsers) || 0;
+            payload.numberOfExtraRings = Number(payload.numberOfExtraRings) || 0;
+
+            payload.moduleDetails = payload.moduleDetails.map(m => {
+                const { id: modId, quoteId, ...rest } = m; 
+                return {
+                    ...rest,
+                    employeeNumber: Number(m.employeeNumber) || 0,
+                    isActive: !!m.isActive
+                };
+            });
+
+            payload.productDetails = payload.productDetails.map(p => {
+                const { id: prodId, quoteId, ...rest } = p; 
+                return {
+                    ...rest,
+                    productId: p.productId || p.id,
+                    quantity: Number(p.quantity) || 0,
+                    isActive: true
+                };
+            });
             
             if (id) {
                 await updateQuote(id, payload);
@@ -439,7 +472,7 @@ export default function QuoteCreateScreen() {
             }
             navigation.goBack();
         } catch (error) {
-            Alert.alert("Error", "No se pudo guardar la cotización.");
+            Alert.alert("Error", "No se pudo guardar la cotización. Revisa la consola para más detalles.");
         } finally {
             setSaving(false);
         }

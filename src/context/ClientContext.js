@@ -138,7 +138,8 @@ export const ClientProvider = ({ children }) => {
 
     setLoadingQuotes(true);
     try {
-      const data = await getQuotes(page, PAGE_SIZE); 
+      const data = await getQuotes(page, PAGE_SIZE, 'Id', true); 
+      
       const items = Array.isArray(data) ? data : (data.items || data.data || []);
       
       if (shouldRefresh || page === 1) {
@@ -151,11 +152,13 @@ export const ClientProvider = ({ children }) => {
           setHasMoreQuotes(items.length >= PAGE_SIZE);
       }
     } catch (error) {
+      console.error("Error fetching quotes:", error.response?.data || error.message);
+      
       if (error.message?.includes('Credentials missing')) {
           setQuotes([]);
           return;
       }
-      setQuotes([]); 
+      if (page === 1) setQuotes([]); 
     } finally {
       setLoadingQuotes(false);
     }

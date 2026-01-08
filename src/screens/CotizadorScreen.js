@@ -12,19 +12,16 @@ import { getQuoteById, downloadQuotePdf } from '../services/quoteService';
 const CotizadorScreen = ({ navigation }) => {
   const { quotes, loadingQuotes, hasMoreQuotes, fetchQuotes, refreshQuotes } = useClients();
 
-  // 1. Ocultar header nativo
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  // --- MEDIDAS DE LAYOUT ---
   const [headerHeight, setHeaderHeight] = useState(0);      
   const [controlsHeight, setControlsHeight] = useState(0); 
   
   const scrollY = useRef(new Animated.Value(0)).current;
   const [downloadingId, setDownloadingId] = useState(null);
 
-  // --- LÓGICA DE FILTROS COLAPSABLES ---
   const { translateY, onScroll } = useMemo(() => {
     const heightToHide = controlsHeight || 1; 
 
@@ -51,18 +48,17 @@ const CotizadorScreen = ({ navigation }) => {
     };
   }, [controlsHeight, scrollY]);
 
-  // --- ESTADOS DE DATOS ---
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState(''); 
   const [activeFilters, setActiveFilters] = useState({ 
-    sortParam: 'TrialEndsAt', isDescending: false, sellerId: null 
+    sortParam: 'CreatedAt', isDescending: true, sellerId: null 
   });
 
+  // --- CORRECCIÓN DEL BUCLE INFINITO ---
   useFocusEffect(
     useCallback(() => {
-      // Opcional: Si quieres que siempre refresque al entrar
-      // refreshQuotes();
-    }, [])
+      refreshQuotes();
+    }, []) // <--- Dependencias vacías: Solo ejecuta al enfocar la pantalla
   );
 
   useEffect(() => {
@@ -75,7 +71,6 @@ const CotizadorScreen = ({ navigation }) => {
   const filteredData = useMemo(() => {
     let data = [...quotes];
     
-    // Filtrado local
     if (debouncedQuery) {
       const query = debouncedQuery.toLowerCase();
       data = data.filter(item => 
@@ -95,7 +90,13 @@ const CotizadorScreen = ({ navigation }) => {
     if (activeFilters.sortParam === 'BusinessName') {
       data.sort((a, b) => (a.companyName || '').localeCompare(b.companyName || ''));
     } else {
-      data.sort((a, b) => new Date(b.created) - new Date(a.created));
+      // --- CORRECCIÓN DE FECHA ---
+      // Usamos createdAt o created, y manejamos fechas nulas para que no fallen
+      data.sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.created || 0);
+          const dateB = new Date(b.createdAt || b.created || 0);
+          return dateB - dateA; // Más reciente primero
+      });
     }
     
     return data;
@@ -144,9 +145,7 @@ const CotizadorScreen = ({ navigation }) => {
     </View>
   );
 
-  // --- FOOTER: Botón de "Cargar Más" ---
   const renderFooter = () => {
-    // 1. Si está cargando la paginación, mostrar spinner
     if (loadingQuotes && quotes.length > 0) {
         return (
             <View style={styles.footerLoader}>
@@ -156,7 +155,6 @@ const CotizadorScreen = ({ navigation }) => {
         );
     }
 
-    // 2. Si hay más datos por cargar, mostrar el botón
     if (hasMoreQuotes && quotes.length > 0) {
         return (
             <TouchableOpacity 
@@ -170,11 +168,9 @@ const CotizadorScreen = ({ navigation }) => {
         );
     }
 
-    // 3. Si llegamos al final, un espacio vacío
     return <View style={{ height: 40 }} />;
   };
 
-  // Verificación de layout
   const layoutReady = headerHeight > 0 && controlsHeight > 0;
 
   return (
@@ -215,21 +211,16 @@ const CotizadorScreen = ({ navigation }) => {
             keyExtractor={(item) => item?.id?.toString() || Math.random().toString()}
             renderItem={renderItem}
             ListHeaderComponent={renderListHeader}
-            
-            // Usamos renderFooter para manejar el botón de carga
             ListFooterComponent={renderFooter}
             
             contentContainerStyle={{ 
                 paddingTop: headerHeight + controlsHeight + 10, 
-                // AUMENTADO: Padding inferior generoso para librar el BottomNav
                 paddingBottom: 120, 
                 paddingHorizontal: 20 
             }}
             
             refreshing={loadingQuotes}
             onRefresh={refreshQuotes}
-            
-            // Quitamos onEndReached automático para evitar glitches
             onEndReached={null}
             
             initialNumToRender={8}
@@ -333,7 +324,6 @@ const styles = StyleSheet.create({
       zIndex: 999
   },
 
-  // ESTILOS FOOTER
   loadMoreButton: {
       flexDirection: 'row',
       alignItems: 'center',

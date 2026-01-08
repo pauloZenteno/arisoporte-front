@@ -1,6 +1,4 @@
 import api from './api';
-// CAMBIO CLAVE: Importamos todo como FileSystem desde legacy
-// Esto nos da acceso a documentDirectory Y writeAsStringAsync sin errores.
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Alert } from 'react-native';
@@ -15,10 +13,16 @@ const arrayBufferToBase64 = (buffer) => {
   return window.btoa(binary);
 };
 
-export const getQuotes = async (pageNumber = 1, pageSize = 10) => {
+// MODIFICADO: Ahora acepta sortParam e isDescending
+export const getQuotes = async (pageNumber = 1, pageSize = 10, sortParam = 'CreatedAt', isDescending = true) => {
   try {
     const response = await api.get('/administration/QuoteManagement', {
-      params: { pageNumber, pageSize }
+      params: { 
+        pageNumber, 
+        pageSize,
+        sortParam,      // <--- Agregado
+        isDescending    // <--- Agregado
+      }
     });
     return response.data;
   } catch (error) {
@@ -89,11 +93,10 @@ export const downloadQuotePdf = async (quoteData) => {
     const base64Data = arrayBufferToBase64(response.data);
     const filename = `Cotizacion_${quoteData.folio || 'Borrador'}.pdf`;
     
-    // Ahora FileSystem.documentDirectory vendrá correctamente del legacy
     const fileUri = FileSystem.documentDirectory + filename;
 
     await FileSystem.writeAsStringAsync(fileUri, base64Data, {
-      encoding: 'base64', // String directo para evitar problemas de imports de constantes
+      encoding: 'base64', 
     });
 
     if (!(await Sharing.isAvailableAsync())) {
