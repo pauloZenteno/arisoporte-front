@@ -1,15 +1,21 @@
 import React from 'react';
-import { View, StyleSheet, Platform, StatusBar, Image } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function Header() {
+  const insets = useSafeAreaInsets();
+
   return (
     <View style={styles.container}>
       <LinearGradient
         colors={['#2b5cb5', '#1e40af']} 
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
+        style={[
+            styles.headerGradient, 
+            { paddingTop: insets.top + 12 }
+        ]}
       >
         <View style={styles.logoContainer}>
           <Image 
@@ -29,7 +35,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 6,
-    
     backgroundColor: 'white', 
     borderBottomLeftRadius: 20, 
     borderBottomRightRadius: 20,
@@ -37,7 +42,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   headerGradient: {
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 8 : 50,
     paddingBottom: 12,
     paddingHorizontal: 20, 
     justifyContent: 'center',

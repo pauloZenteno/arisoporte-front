@@ -1,19 +1,25 @@
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, LayoutAnimation, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 export default function BottomNav({ state, descriptors, navigation }) {
+  // 1. Obtenemos los márgenes seguros del dispositivo (Notch, Home Indicator, Botones Android)
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
   }, [state.index]);
 
   return (
-    <View style={styles.container}>
+    // 2. Aplicamos el margen inferior dinámico
+    // En Android, insets.bottom suele ser el alto de la barra de navegación.
+    // Le sumamos 20 para mantener el efecto "flotante".
+    <View style={[styles.container, { bottom: (Platform.OS === 'android' ? 10 : 20) + insets.bottom }]}>
       <View style={styles.glassBackground}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
@@ -47,7 +53,6 @@ export default function BottomNav({ state, descriptors, navigation }) {
               ]}
             >
               <View style={styles.contentContainer}>
-                {/* ÍCONO: Si está activo es AZUL, si no, es GRIS */}
                 <Ionicons 
                   name={isFocused ? iconName : `${iconName}-outline`} 
                   size={22} 
@@ -71,11 +76,13 @@ export default function BottomNav({ state, descriptors, navigation }) {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 25,
+    // 'bottom' se controla dinámicamente en el componente
     left: 0,
     right: 0,
     alignItems: 'center',
     paddingHorizontal: 20, 
+    // Aseguramos que el menú esté por encima de cualquier otro elemento flotante
+    zIndex: 100, 
   },
   glassBackground: {
     flexDirection: 'row',
@@ -86,15 +93,18 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 40,
     backgroundColor: 'white',
-    // Sombra premium suave
-    shadowColor: '#2b5cb5',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
+    
+    // --- MEJORA VISUAL: Sombra más pronunciada ---
+    shadowColor: '#000', // Sombra negra pura para más contraste
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15, // Aumentado de 0.08 a 0.15 para que resalte más
     shadowRadius: 20,
-    elevation: 8,
+    elevation: 10, // Aumentado para Android
+    
     padding: 6, 
     borderWidth: 1,
-    borderColor: '#F3F4F6', // Borde gris muy sutil
+    // --- MEJORA VISUAL: Borde un poco más oscuro ---
+    borderColor: '#E5E7EB', // Gris medio (antes era muy claro)
   },
   
   tabItem: {
@@ -110,10 +120,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   
-  // --- AQUÍ ESTÁ EL CAMBIO DE DISEÑO ---
   tabItemActive: {
     flex: 2.5, 
-    // ESTILO RECOMENDADO ("Tinted"): Fondo azul muy claro + Texto Azul Fuerte
     backgroundColor: '#EFF6FF' 
   },
   
@@ -125,7 +133,7 @@ const styles = StyleSheet.create({
   },
   
   tabLabel: {
-    color: '#2b5cb5', // Texto azul fuerte
+    color: '#2b5cb5',
     fontSize: 13,
     fontWeight: '700',
     marginLeft: 8,

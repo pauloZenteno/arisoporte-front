@@ -31,7 +31,7 @@ function MainTabs() {
       screenOptions={({ navigation }) => ({
         header: () => <Header navigation={navigation} />, 
         headerShown: true,
-        headerTransparent: false, 
+        headerTransparent: true, // IMPORTANTE: Esto ayuda a que el header flote correctamente si es necesario
       })}
     >
       <Tab.Screen 
@@ -67,7 +67,8 @@ export default function App() {
   return (
     <ClientProvider>
       <NavigationContainer>
-        <StatusBar style="light" backgroundColor="#2b5cb5" />
+        {/* CAMBIO CLAVE: Transparente y Translúcido para que se vea el gradiente */}
+        <StatusBar style="light" backgroundColor="transparent" translucent={true} />
         
         <Stack.Navigator 
           initialRouteName="Login"

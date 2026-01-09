@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator, Alert, Image
+  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image, UIManager
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { login, setSession, setUserInfo, getUserInfo, clearSession, checkBiometricSupport, authenticateWithBiometrics } from '../services/authService';
 import { useClients } from '../context/ClientContext';
 import BackgroundSvg from '../assets/login_background.svg'; 
 
-const { width, height } = Dimensions.get('window');
+// Esta línea suele causar warnings en la nueva arquitectura de Android, la comentamos para limpiar logs.
+// if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+//   UIManager.setLayoutAnimationEnabledExperimental(true);
+// }
 
 export default function LoginScreen({ navigation }) {
   const [username, setUsername] = useState('');
@@ -41,7 +44,7 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     if (!username || !password) {
-      Alert.alert('Error', 'Por favor ingresa usuario y contraseña');
+      Alert.alert('Campos vacíos', 'Por favor ingresa usuario y contraseña');
       return;
     }
 
@@ -72,8 +75,16 @@ export default function LoginScreen({ navigation }) {
       navigation.replace('MainTabs');
 
     } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Credenciales incorrectas o error en el servidor.');
+      console.error("Login Error:", error);
+      
+      // VALIDACIÓN ESPECÍFICA DEL ERROR 400
+      if (error.response && error.response.status === 400) {
+        Alert.alert('Credenciales Incorrectas', 'El usuario o la contraseña no coinciden. Verifícalos e intenta de nuevo.');
+      } else if (error.message && error.message.includes('Network Error')) {
+        Alert.alert('Error de Conexión', 'No se pudo conectar con el servidor. Revisa tu internet.');
+      } else {
+        Alert.alert('Error', 'Ocurrió un problema inesperado. Inténtalo más tarde.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -116,8 +127,14 @@ export default function LoginScreen({ navigation }) {
       navigation.replace('MainTabs');
 
     } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Contraseña incorrecta.');
+      console.error("Quick Login Error:", error);
+
+      // VALIDACIÓN ESPECÍFICA DEL ERROR 400 EN LOGIN RÁPIDO
+      if (error.response && error.response.status === 400) {
+        Alert.alert('Contraseña Incorrecta', 'La contraseña ingresada no es válida.');
+      } else {
+        Alert.alert('Error', 'No se pudo validar la sesión. Intenta iniciar sesión manualmente.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +167,7 @@ export default function LoginScreen({ navigation }) {
     return (
       <View style={styles.mainContainer}>
         <View style={styles.backgroundContainer}>
-          <BackgroundSvg width={width} height={height} preserveAspectRatio="xMidYMid slice" />
+          <BackgroundSvg width="100%" height="100%" preserveAspectRatio="none" />
         </View>
 
         <KeyboardAvoidingView 
@@ -231,7 +248,7 @@ export default function LoginScreen({ navigation }) {
   return (
     <View style={styles.mainContainer}>
       <View style={styles.backgroundContainer}>
-        <BackgroundSvg width={width} height={height} preserveAspectRatio="xMidYMid slice" />
+        <BackgroundSvg width="100%" height="100%" preserveAspectRatio="none" />
       </View>
 
       <KeyboardAvoidingView 
