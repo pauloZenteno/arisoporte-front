@@ -1,11 +1,12 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { validateStartupSession, clearSession, getUserInfo, setUserInfo } from '../services/authService';
+import { validateStartupSession, clearSession, getUserInfo } from '../services/authService';
 
 const AuthContext = createContext();
 
+// Mapa de corrección de IDs (Backup)
 const HARDCODED_SELLER_RELATIONS = {
-  'b8QWwNJYxAGr5gER': 'NZ9DezJWqMQOnRE3',
-  '5m2XOBMXzJ4NZkwr': 'lK20zbAk4JRDVEa1',
+  'b8QWwNJYxAGr5gER': 'NZ9DezJWqMQOnRE3', // Karen 
+  '5m2XOBMXzJ4NZkwr': 'lK20zbAk4JRDVEa1', // Paola 
 };
 
 export const AuthProvider = ({ children }) => {
@@ -17,20 +18,12 @@ export const AuthProvider = ({ children }) => {
     loadStorageData();
   }, []);
 
-  const getPatchedUser = async () => {
-    try {
-      const user = await getUserInfo();
-      
-      if (user && user.id) {
-        if (HARDCODED_SELLER_RELATIONS[user.id]) {
-          user.sellerId = HARDCODED_SELLER_RELATIONS[user.id];
-        }
-        return user;
-      }
-    } catch (error) {
-      console.log("Error recuperando usuario:", error);
+  const patchUser = (user) => {
+    if (!user || !user.id) return user;
+    if (!user.sellerId && HARDCODED_SELLER_RELATIONS[user.id]) {
+        user.sellerId = HARDCODED_SELLER_RELATIONS[user.id];
     }
-    return null;
+    return user;
   };
 
   const loadStorageData = async () => {
@@ -38,7 +31,8 @@ export const AuthProvider = ({ children }) => {
       const isValid = await validateStartupSession();
       
       if (isValid) {
-        const user = await getPatchedUser();
+        let user = await getUserInfo();
+        user = patchUser(user);
         
         if (user) {
             setUserProfile(user);
@@ -57,24 +51,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signIn = async (userData) => {
-    let userToSet = userData;
-
-    if (!userToSet) {
-        userToSet = await getPatchedUser();
-    }
+    const userToSet = patchUser(userData);
 
     if (userToSet && userToSet.id) {
-        if (HARDCODED_SELLER_RELATIONS[userToSet.id]) {
-            userToSet.sellerId = HARDCODED_SELLER_RELATIONS[userToSet.id];
-        }
-
-        // ELIMINADO: await setUserInfo(userToSet); 
-        // Ya no forzamos el guardado aquí. Dejamos que LoginScreen decida.
-
         setUserProfile(userToSet);
         setIsAuthenticated(true);
     } else {
-        console.error("Error crítico: No se recibieron datos de usuario válidos en signIn.");
+        console.error("Error: Datos de usuario inválidos en signIn.");
     }
   };
 
@@ -82,7 +65,7 @@ export const AuthProvider = ({ children }) => {
     try {
         await clearSession();
     } catch (error) {
-        console.log("Error al limpiar sesión", error);
+        // Error silencioso
     }
     setIsAuthenticated(false);
     setUserProfile(null);

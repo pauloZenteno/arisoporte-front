@@ -4,7 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 import { useClients } from '../context/ClientContext';
 import { useAuth } from '../context/AuthContext';
 import { PERMISSIONS, hasPermission } from '../utils/permissions';
-import { AdminRoleEnum } from '../utils/constants';
 import ActiveClientCard from '../components/cards/ActiveClientCard';
 import InactiveClientCard from '../components/cards/InactiveClientCard';
 import ClientFilterHeader from '../components/ClientFilterHeader';
@@ -31,6 +30,7 @@ const ClientsScreen = () => {
     
     const scrollY = useRef(new Animated.Value(0)).current;
 
+    // AQUI OBTENEMOS LOS DATOS YA FILTRADOS DESDE EL CONTEXTO
     const { 
         actives, loadingActives, fetchActives, refreshActives, applyActiveFilter, activeActiveFilter,
         inactives, loadingInactives, fetchInactives, refreshInactives, applyInactiveFilter, activeInactiveFilter,
@@ -41,21 +41,14 @@ const ClientsScreen = () => {
         hasPermission(userProfile?.roleId, PERMISSIONS.MANAGE_CLIENT_STATUS), 
     [userProfile]);
 
-    const canViewAll = useMemo(() => 
-        hasPermission(userProfile?.roleId, PERMISSIONS.VIEW_ALL_CLIENTS), 
-    [userProfile]);
-
     const { translateY, onScroll } = useMemo(() => {
         const heightToHide = controlsHeight || 1; 
-
         const clampedScrollY = scrollY.interpolate({
             inputRange: [0, 1],
             outputRange: [0, 1],
             extrapolateLeft: 'clamp',
         });
-
         const diffClamp = Animated.diffClamp(clampedScrollY, 0, heightToHide);
-
         const translate = diffClamp.interpolate({
             inputRange: [0, heightToHide],
             outputRange: [0, -heightToHide],
@@ -75,23 +68,26 @@ const ClientsScreen = () => {
         setExpandedId(prev => prev === id ? null : id);
     };
 
+    // Función de filtrado local SOLO para búsqueda y filtros de UI (No seguridad)
     const getFilteredData = (data) => {
         let result = data;
         
-        // CORRECCIÓN AQUÍ: Usamos sellerId en lugar de id
-        if (!canViewAll) {
-            const mySellerId = userProfile?.sellerId || userProfile?.id;
-            if (mySellerId) {
-                result = result.filter(client => client.sellerId === mySellerId);
-            }
+        // 1. Búsqueda por texto
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(item => 
+                (item.businessName || item.name || '').toLowerCase().includes(query) ||
+                (item.alias || '').toLowerCase().includes(query)
+            );
         }
 
-        if (!searchQuery) return result;
+        // 2. Filtro Manual del Dropdown (Si se usa para refinar)
+        const currentFilters = viewMode === 'actives' ? activeActiveFilter : activeInactiveFilter;
+        if (currentFilters && currentFilters.sellerId) {
+            result = result.filter(client => String(client.sellerId) === String(currentFilters.sellerId));
+        }
 
-        return result.filter(item => 
-            (item.businessName || item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (item.alias || '').toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        return result;
     };
 
     const renderFilters = () => {
@@ -165,22 +161,19 @@ const ClientsScreen = () => {
                 onEndReachedThreshold={0.5}
                 refreshing={isLoading}
                 onRefresh={refresh}
-                
                 contentContainerStyle={{
                     paddingTop: fixedHeight + controlsHeight + 10,
                     paddingBottom: 80,
                     paddingHorizontal: 16
                 }}
-                
                 onScroll={onScroll}
                 scrollEventThrottle={16}
-                
                 ListEmptyComponent={
                     <View style={styles.center}>
                         <Text style={styles.emptyText}>
                             {searchQuery.length > 0 
                                 ? 'No se encontraron coincidencias.' 
-                                : `No hay clientes ${isActives ? 'activos' : 'inactivos'}.`}
+                                : `No hay clientes ${isActives ? 'activos' : 'inactivos'} disponibles.`}
                         </Text>
                     </View>
                 }
@@ -190,7 +183,6 @@ const ClientsScreen = () => {
 
     return (
         <View style={styles.container}>
-            
             <View 
                 style={styles.fixedSectionWrapper}
                 onLayout={(e) => setFixedHeight(e.nativeEvent.layout.height)}
@@ -202,7 +194,6 @@ const ClientsScreen = () => {
                     >
                         <Text style={[styles.tabText, viewMode === 'actives' && styles.activeTabText]}>Activos</Text>
                     </TouchableOpacity>
-                    
                     <TouchableOpacity 
                         style={[styles.tab, viewMode === 'inactives' && styles.activeTab]} 
                         onPress={() => setViewMode('inactives')}
@@ -211,7 +202,6 @@ const ClientsScreen = () => {
                     </TouchableOpacity>
                 </View>
             </View>
-
             <Animated.View 
                 style={[
                     styles.collapsibleWrapper, 
@@ -225,7 +215,6 @@ const ClientsScreen = () => {
             >
                 {renderFilters()}
             </Animated.View>
-
             {renderList()}
         </View>
     );
@@ -233,59 +222,21 @@ const ClientsScreen = () => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    
     fixedSectionWrapper: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 100, 
-        elevation: 10, 
-        backgroundColor: COLORS.background, 
-        paddingBottom: 5,
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: COLORS.background, paddingBottom: 5,
         paddingTop: Platform.OS === 'android' ? 0 : 0 
     },
-    
     collapsibleWrapper: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        zIndex: 50, 
-        elevation: 5,
-        backgroundColor: COLORS.background,
-        paddingTop: 10,
+        position: 'absolute', left: 0, right: 0, zIndex: 50, elevation: 5, backgroundColor: COLORS.background, paddingTop: 10,
     },
-
     tabContainer: {
-        flexDirection: 'row',
-        backgroundColor: COLORS.white,
-        padding: 4,
-        marginHorizontal: 16,
-        marginTop: 10,
-        borderRadius: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 2
+        flexDirection: 'row', backgroundColor: COLORS.white, padding: 4, marginHorizontal: 16, marginTop: 10, borderRadius: 12,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2
     },
-    tab: {
-        flex: 1,
-        paddingVertical: 10,
-        alignItems: 'center',
-        borderRadius: 8
-    },
-    activeTab: {
-        backgroundColor: '#EFF6FF'
-    },
-    tabText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: COLORS.textSecondary
-    },
-    activeTabText: {
-        color: '#2563EB'
-    },
+    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+    activeTab: { backgroundColor: '#EFF6FF' },
+    tabText: { fontSize: 14, fontWeight: '600', color: COLORS.textSecondary },
+    activeTabText: { color: '#2563EB' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
     emptyText: { color: COLORS.textSecondary, fontSize: 16, textAlign: 'center', marginTop: 10 }
 });

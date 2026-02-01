@@ -15,7 +15,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Permite a AriSoporte usar FaceID para autenticarte rápidamente."
+        "NSFaceIDUsageDescription": "Permite a AriSoporte usar FaceID para autenticarte rápidamente.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.threecode.ari-soporte",
       "buildNumber": "2"

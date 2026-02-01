@@ -3,7 +3,7 @@ import {
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image, Animated 
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useBiometricAuth } from '../hooks/useBiometricAuth';
 import { 
   login, setSession, setUserInfo, getUserInfo, clearFullStorage, 
@@ -11,6 +11,12 @@ import {
 } from '../services/authService';
 import { useClients } from '../context/ClientContext';
 import { useAuth } from '../context/AuthContext';
+
+// Mapa de relaciones manual por si falla la API
+const HARDCODED_SELLER_RELATIONS = {
+  'b8QWwNJYxAGr5gER': 'NZ9DezJWqMQOnRE3', // Karen
+  '5m2XOBMXzJ4NZkwr': 'lK20zbAk4JRDVEa1', // Paola
+};
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -20,7 +26,6 @@ export default function LoginScreen() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   
   const [savedUser, setSavedUser] = useState(null);
-  
   const [isCheckingUser, setIsCheckingUser] = useState(true);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -40,7 +45,7 @@ export default function LoginScreen() {
         setSavedUser(user);
       }
     } catch (error) {
-      console.error(error);
+      // Error silencioso
     } finally {
       setIsCheckingUser(false);
       Animated.timing(fadeAnim, {
@@ -52,8 +57,6 @@ export default function LoginScreen() {
   };
 
   const performLoginSuccess = async (data, currentPassword) => {
-    // Extraemos todos los datos que vienen del backend
-    // Asegúrate de que 'roleId' venga en 'data'. Si viene como 'role', ajustalo aquí.
     const { 
         accessToken, 
         refreshToken, 
@@ -61,9 +64,16 @@ export default function LoginScreen() {
         firstName, 
         lastName, 
         jobPosition,
-        roleId, // Importante: Extraer el roleId
+        roleId, 
         username: apiUsername 
     } = data;
+
+    let finalSellerId = data.sellerId;
+    
+    // Si no viene en la API, usamos el parche manual
+    if (!finalSellerId && HARDCODED_SELLER_RELATIONS[id]) {
+        finalSellerId = HARDCODED_SELLER_RELATIONS[id];
+    }
 
     await setSession(accessToken, refreshToken);
     
@@ -78,22 +88,22 @@ export default function LoginScreen() {
       firstName: firstName || '', 
       lastName: lastName || '', 
       jobPosition: jobPosition || '',
-      roleId: roleId, // Lo incluimos en el objeto local
+      roleId: roleId,
+      sellerId: finalSellerId, 
       username: userToSave
     };
 
-    // Actualizamos el contexto de clientes (para nombre en header, etc)
+    // Actualizamos el contexto de clientes
     setUserProfile(userData);
 
-    // Guardamos en disco solo si se marcó "Recordarme" o si ya estaba guardado
     if (rememberMe || savedUser) {
       await setUserInfo(userData);
     }
 
-    // Cargamos datos iniciales
-    loadInitialData();
+    // Carga de datos inmediata para evitar Race Condition
+    loadInitialData(userData);
 
-    // CRÍTICO: Pasamos userData directamente a signIn para evitar lecturas de disco fallidas
+    // Iniciamos sesión en AuthContext
     await signIn(userData);
   };
 
@@ -109,7 +119,6 @@ export default function LoginScreen() {
       const data = await login(username, password);
       await performLoginSuccess(data, password);
     } catch (error) {
-      console.error("Login Error:", error);
       if (error.response && error.response.status === 400) {
         Alert.alert('Credenciales Incorrectas', 'El usuario o la contraseña no coinciden.');
       } else if (error.message && error.message.includes('Network Error')) {
@@ -166,7 +175,6 @@ export default function LoginScreen() {
         }
       } catch (error) {
         setIsLoading(false);
-        console.error("Biometric Login Error:", error);
         Alert.alert('Error', 'Hubo un problema al validar tus credenciales guardadas. Ingresa tu contraseña manualmente.');
       }
     }

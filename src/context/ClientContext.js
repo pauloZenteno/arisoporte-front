@@ -8,6 +8,15 @@ import { AdminRoleEnum } from '../utils/constants';
 
 const ClientContext = createContext();
 
+// --- MAPA DE RESTRICCIÓN ESTRICTA ---
+const STRICT_USER_FILTERS = {
+  // ID USUARIO (Paola)      ->    SELLER ID (Paola)
+  '5m2XOBMXzJ4NZkwr':              'lK20zbAk4JRDVEa1',
+  
+  // ID USUARIO (Karen)      ->    SELLER ID (Karen)
+  'b8QWwNJYxAGr5gER':              'NZ9DezJWqMQOnRE3'
+};
+
 export const ClientProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
 
@@ -42,13 +51,24 @@ export const ClientProvider = ({ children }) => {
     return [...prevItems, ...uniqueNew];
   };
 
-  const fetchGeneric = async (category, page, filters) => {
+  // --- FETCH GENERICO BLINDADO ---
+  const fetchGeneric = async (category, page, filters, explicitUser = null) => {
     const token = await SecureStore.getItemAsync('accessToken');
     if (!token) return { newItems: [], totalCount: 0, success: false };
 
-    const currentUser = await getUserInfo();
+    let currentUser = explicitUser || userProfile;
+    if (!currentUser) {
+        currentUser = await getUserInfo();
+    }
+
     const isSeller = currentUser?.roleId === AdminRoleEnum.Seller;
     const sellerId = currentUser?.sellerId;
+    const currentUserId = currentUser?.id;
+
+    let strictSellerId = null;
+    if (currentUserId && STRICT_USER_FILTERS[currentUserId]) {
+        strictSellerId = STRICT_USER_FILTERS[currentUserId];
+    }
 
     let params = {
       pageNumber: page,
@@ -59,7 +79,9 @@ export const ClientProvider = ({ children }) => {
       ...filters 
     };
 
-    if (isSeller && sellerId) {
+    if (strictSellerId) {
+        params.sellerId = strictSellerId;
+    } else if (isSeller && sellerId) {
         params.sellerId = sellerId;
     }
 
@@ -69,24 +91,28 @@ export const ClientProvider = ({ children }) => {
       const result = await getClientsFiltered(params);
       let newItems = Array.isArray(result) ? result : (result.items || result.data || []);
       
-      if (isSeller && sellerId) {
+      // FILTRADO FINAL EN FRONTEND (DOBLE SEGURIDAD)
+      if (strictSellerId) {
+          newItems = newItems.filter(item => {
+              if (!item.sellerId) return false;
+              return String(item.sellerId) === String(strictSellerId);
+          });
+      } else if (isSeller && sellerId) {
           newItems = newItems.filter(item => item.sellerId === sellerId);
       }
 
       return { newItems, totalCount: result.totalCount || 0, success: true }; 
     } catch (error) {
-      if (error.message?.includes('Credentials missing')) {
-          return { newItems: [], totalCount: 0, success: false };
-      }
       return { newItems: [], totalCount: 0, success: false };
     }
   };
 
-  const fetchDemos = async (page = 1, filters = activeDemoFilter, shouldRefresh = false) => {
+  const fetchDemos = async (page = 1, filters = activeDemoFilter, shouldRefresh = false, explicitUser = null) => {
     if (loadingDemos || (!hasMoreDemos && !shouldRefresh)) return;
     setLoadingDemos(true);
     const apiFilters = { sortParam: filters.sortParam, isDescending: filters.isDescending, sellerId: filters.sellerId, statuses: 1, types: true, filterActives: true };
-    const { newItems, success } = await fetchGeneric('demos', page, apiFilters);
+    
+    const { newItems, success } = await fetchGeneric('demos', page, apiFilters, explicitUser);
     
     if (shouldRefresh || page === 1) {
       setDemos(newItems);
@@ -102,12 +128,13 @@ export const ClientProvider = ({ children }) => {
     setLoadingDemos(false);
   };
 
-  const fetchActives = async (page = 1, filters = activeActiveFilter, shouldRefresh = false) => {
+  const fetchActives = async (page = 1, filters = activeActiveFilter, shouldRefresh = false, explicitUser = null) => {
     if (loadingActives || (!hasMoreActives && !shouldRefresh)) return;
     setLoadingActives(true);
     let finalSort = filters.sortParam === 'TrialEndsAt' ? 'CreatedAt' : filters.sortParam;
     const apiFilters = { statuses: 1, types: false, sortParam: finalSort, isDescending: filters.isDescending, sellerId: filters.sellerId, filterActives: true };
-    const { newItems, success } = await fetchGeneric('actives', page, apiFilters);
+    
+    const { newItems, success } = await fetchGeneric('actives', page, apiFilters, explicitUser);
     
     if (shouldRefresh || page === 1) {
       setActives(newItems);
@@ -123,12 +150,13 @@ export const ClientProvider = ({ children }) => {
     setLoadingActives(false);
   };
 
-  const fetchInactives = async (page = 1, filters = activeInactiveFilter, shouldRefresh = false) => {
+  const fetchInactives = async (page = 1, filters = activeInactiveFilter, shouldRefresh = false, explicitUser = null) => {
     if (loadingInactives || (!hasMoreInactives && !shouldRefresh)) return;
     setLoadingInactives(true);
     let finalSort = filters.sortParam === 'TrialEndsAt' ? 'CreatedAt' : filters.sortParam;
     const apiFilters = { statuses: 2, sortParam: finalSort, isDescending: filters.isDescending, sellerId: filters.sellerId, filterActives: true };
-    const { newItems, success } = await fetchGeneric('inactives', page, apiFilters);
+    
+    const { newItems, success } = await fetchGeneric('inactives', page, apiFilters, explicitUser);
     
     if (shouldRefresh || page === 1) {
       setInactives(newItems);
@@ -147,15 +175,12 @@ export const ClientProvider = ({ children }) => {
   const fetchQuotes = async (page = 1, shouldRefresh = false) => {
     const token = await SecureStore.getItemAsync('accessToken');
     if (!token) return;
-
     if (loadingQuotes || (!hasMoreQuotes && !shouldRefresh)) return;
 
     setLoadingQuotes(true);
     try {
       const data = await getQuotes(page, PAGE_SIZE, 'Id', true); 
-      
       const items = Array.isArray(data) ? data : (data.items || data.data || []);
-      
       if (shouldRefresh || page === 1) {
           setQuotes(items);
           setQuotePage(1);
@@ -166,12 +191,6 @@ export const ClientProvider = ({ children }) => {
           setHasMoreQuotes(items.length >= PAGE_SIZE);
       }
     } catch (error) {
-      console.error("Error fetching quotes:", error.response?.data || error.message);
-      
-      if (error.message?.includes('Credentials missing')) {
-          setQuotes([]);
-          return;
-      }
       if (page === 1) setQuotes([]); 
     } finally {
       setLoadingQuotes(false);
@@ -233,20 +252,25 @@ export const ClientProvider = ({ children }) => {
     }
   };
 
-  const loadInitialData = async () => {
+  const loadInitialData = async (explicitUser = null) => {
     const token = await SecureStore.getItemAsync('accessToken');
     if (!token) return;
 
-    try {
-        const savedUser = await getUserInfo();
-        if (savedUser) setUserProfile(savedUser);
-    } catch (e) {
+    let currentUser = explicitUser;
+    
+    if (currentUser) {
+        setUserProfile(currentUser);
+    } else {
+        try {
+            currentUser = await getUserInfo();
+            if (currentUser) setUserProfile(currentUser);
+        } catch (e) {}
     }
 
     await Promise.all([
-        fetchDemos(1, activeDemoFilter, true),
-        fetchActives(1, activeActiveFilter, true), 
-        fetchInactives(1, activeInactiveFilter, true),
+        fetchDemos(1, activeDemoFilter, true, currentUser),
+        fetchActives(1, activeActiveFilter, true, currentUser), 
+        fetchInactives(1, activeInactiveFilter, true, currentUser),
         fetchQuotes(1, true)
     ]);
   };
@@ -255,7 +279,7 @@ export const ClientProvider = ({ children }) => {
     const init = async () => {
         const token = await SecureStore.getItemAsync('accessToken');
         if (token) {
-            loadInitialData();
+            loadInitialData(); 
         }
     };
     init();
