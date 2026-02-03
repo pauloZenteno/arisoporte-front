@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, Platform, UIManager } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useClients } from '../context/ClientContext';
@@ -30,7 +30,6 @@ const ClientsScreen = () => {
     
     const scrollY = useRef(new Animated.Value(0)).current;
 
-    // AQUI OBTENEMOS LOS DATOS YA FILTRADOS DESDE EL CONTEXTO
     const { 
         actives, loadingActives, fetchActives, refreshActives, applyActiveFilter, activeActiveFilter,
         inactives, loadingInactives, fetchInactives, refreshInactives, applyInactiveFilter, activeInactiveFilter,
@@ -64,15 +63,13 @@ const ClientsScreen = () => {
         };
     }, [controlsHeight, scrollY]);
 
-    const toggleExpand = (id) => {
+    const toggleExpand = useCallback((id) => {
         setExpandedId(prev => prev === id ? null : id);
-    };
+    }, []);
 
-    // Función de filtrado local SOLO para búsqueda y filtros de UI (No seguridad)
     const getFilteredData = (data) => {
         let result = data;
         
-        // 1. Búsqueda por texto
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             result = result.filter(item => 
@@ -81,7 +78,6 @@ const ClientsScreen = () => {
             );
         }
 
-        // 2. Filtro Manual del Dropdown (Si se usa para refinar)
         const currentFilters = viewMode === 'actives' ? activeActiveFilter : activeInactiveFilter;
         if (currentFilters && currentFilters.sellerId) {
             result = result.filter(client => String(client.sellerId) === String(currentFilters.sellerId));
@@ -89,6 +85,32 @@ const ClientsScreen = () => {
 
         return result;
     };
+
+    // --- OPTIMIZACIÓN 1: useCallback para renderItem ---
+    // Esto evita que se cree una nueva función para cada item en cada render
+    const renderClientItem = useCallback(({ item }) => {
+        if (!item) return null;
+        
+        if (viewMode === 'actives') {
+            return (
+                <ActiveClientCard 
+                    item={item} 
+                    isExpanded={expandedId === item.id} 
+                    onPress={() => toggleExpand(item.id)}
+                    onSuspend={canManageStatus ? () => suspendClient(item.id) : null}
+                />
+            );
+        } else {
+            return (
+                <InactiveClientCard 
+                    item={item} 
+                    isExpanded={expandedId === item.id} 
+                    onPress={() => toggleExpand(item.id)}
+                    onReactivate={canManageStatus ? () => reactivateClient(item.id) : null}
+                />
+            );
+        }
+    }, [viewMode, expandedId, canManageStatus, toggleExpand, suspendClient, reactivateClient]);
 
     const renderFilters = () => {
         const isActives = viewMode === 'actives';
@@ -134,29 +156,17 @@ const ClientsScreen = () => {
         return (
             <Animated.FlatList
                 data={data}
-                keyExtractor={(item) => item?.id || Math.random().toString()}
-                renderItem={({ item }) => {
-                    if (!item) return null;
-                    if (isActives) {
-                        return (
-                            <ActiveClientCard 
-                                item={item} 
-                                isExpanded={expandedId === item.id} 
-                                onPress={() => toggleExpand(item.id)}
-                                onSuspend={canManageStatus ? () => suspendClient(item.id) : null}
-                            />
-                        );
-                    } else {
-                        return (
-                            <InactiveClientCard 
-                                item={item} 
-                                isExpanded={expandedId === item.id} 
-                                onPress={() => toggleExpand(item.id)}
-                                onReactivate={canManageStatus ? () => reactivateClient(item.id) : null}
-                            />
-                        );
-                    }
-                }}
+                // --- OPTIMIZACIÓN 2: Key extractor simple y estable ---
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={renderClientItem}
+                
+                // --- OPTIMIZACIÓN 3: Props de rendimiento ---
+                initialNumToRender={8}       // Renderiza solo los necesarios para llenar la pantalla al inicio
+                maxToRenderPerBatch={10}     // Renderiza en lotes pequeños al hacer scroll
+                windowSize={5}               // Reduce la memoria manteniendo menos items fuera de pantalla (default es 21)
+                removeClippedSubviews={true} // Desmonta vistas fuera de pantalla (Vital en Android)
+                updateCellsBatchingPeriod={50} // Espera 50ms entre actualizaciones de lotes
+                
                 onEndReached={fetchMore}
                 onEndReachedThreshold={0.5}
                 refreshing={isLoading}
@@ -188,18 +198,41 @@ const ClientsScreen = () => {
                 onLayout={(e) => setFixedHeight(e.nativeEvent.layout.height)}
             >
                 <View style={styles.tabContainer}>
+                    
+                    {/* PESTAÑA ACTIVOS (VERDE) */}
                     <TouchableOpacity 
-                        style={[styles.tab, viewMode === 'actives' && styles.activeTab]} 
+                        style={[
+                            styles.tab, 
+                            viewMode === 'actives' && styles.activeTabGreen
+                        ]} 
                         onPress={() => setViewMode('actives')}
                     >
-                        <Text style={[styles.tabText, viewMode === 'actives' && styles.activeTabText]}>Activos</Text>
+                        <Text style={[
+                            styles.tabText, 
+                            viewMode === 'actives' && styles.activeTabTextGreen
+                        ]}>
+                            Activos
+                        </Text>
                     </TouchableOpacity>
+
+                    <View style={{ width: 10 }} /> 
+
+                    {/* PESTAÑA INACTIVOS (NARANJA) */}
                     <TouchableOpacity 
-                        style={[styles.tab, viewMode === 'inactives' && styles.activeTab]} 
+                        style={[
+                            styles.tab, 
+                            viewMode === 'inactives' && styles.activeTabOrange
+                        ]} 
                         onPress={() => setViewMode('inactives')}
                     >
-                        <Text style={[styles.tabText, viewMode === 'inactives' && styles.activeTabText]}>Inactivos</Text>
+                        <Text style={[
+                            styles.tabText, 
+                            viewMode === 'inactives' && styles.activeTabTextOrange
+                        ]}>
+                            Inactivos
+                        </Text>
                     </TouchableOpacity>
+
                 </View>
             </View>
             <Animated.View 
@@ -230,13 +263,50 @@ const styles = StyleSheet.create({
         position: 'absolute', left: 0, right: 0, zIndex: 50, elevation: 5, backgroundColor: COLORS.background, paddingTop: 10,
     },
     tabContainer: {
-        flexDirection: 'row', backgroundColor: COLORS.white, padding: 4, marginHorizontal: 16, marginTop: 10, borderRadius: 12,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2
+        flexDirection: 'row', 
+        padding: 4, 
+        marginHorizontal: 16, 
+        marginTop: 10,
     },
-    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
-    activeTab: { backgroundColor: '#EFF6FF' },
-    tabText: { fontSize: 14, fontWeight: '600', color: COLORS.textSecondary },
-    activeTabText: { color: '#2563EB' },
+    
+    // Estilos Base del Tab
+    tab: { 
+        flex: 1, 
+        paddingVertical: 10, 
+        alignItems: 'center', 
+        borderRadius: 10,
+        borderWidth: 1,           
+        borderColor: '#E5E7EB',   
+        backgroundColor: 'white', 
+    },
+    tabText: { 
+        fontSize: 14, 
+        fontWeight: '600', 
+        color: '#6B7280' 
+    },
+
+    // ESTILOS ACTIVOS (VERDE)
+    activeTabGreen: { 
+        backgroundColor: '#ECFDF5', 
+        borderColor: '#059669',     
+        borderWidth: 1.5            
+    },
+    activeTabTextGreen: { 
+        color: '#059669',           
+        fontWeight: '700'
+    },
+
+    // ESTILOS INACTIVOS (NARANJA)
+    activeTabOrange: { 
+        backgroundColor: '#FFF7ED', 
+        borderColor: '#EA580C',     
+        borderWidth: 1.5 
+    },
+    activeTabTextOrange: { 
+        color: '#EA580C',           
+        fontWeight: '700'
+    },
+
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
     emptyText: { color: COLORS.textSecondary, fontSize: 16, textAlign: 'center', marginTop: 10 }
 });

@@ -203,7 +203,8 @@ const CotizadorScreen = ({ navigation }) => {
             ListFooterComponent={renderFooter}
             
             contentContainerStyle={{ 
-                paddingTop: controlsHeight + 10, 
+                // AJUSTE DE UI: Eliminamos el offset extra, ahora empieza justo donde termina el header
+                paddingTop: controlsHeight, 
                 paddingBottom: 120, 
                 paddingHorizontal: 20 
             }}
@@ -253,18 +254,19 @@ const styles = StyleSheet.create({
   controlsContent: {
     paddingHorizontal: 0, 
     paddingTop: 10, 
-    paddingBottom: 5, 
+    paddingBottom: 0, 
   },
 
   listHeaderContainer: {
+    // AJUSTE DE UI: Reducimos drásticamente el margen superior para pegarlo al filtro
+    marginTop: 5, 
     marginBottom: 15,
-    marginTop: 5
   },
 
   createButton: {
     flexDirection: 'row',
     backgroundColor: '#ecfdf5', 
-    paddingVertical: 10, 
+    paddingVertical: 12, 
     paddingHorizontal: 20,
     borderRadius: 14, 
     alignItems: 'center',

@@ -8,19 +8,23 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 export default function BottomNav({ state, descriptors, navigation }) {
-  // 1. Obtenemos los márgenes seguros del dispositivo (Notch, Home Indicator, Botones Android)
   const insets = useSafeAreaInsets();
+  const isAndroid = Platform.OS === 'android';
 
   useEffect(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
   }, [state.index]);
 
   return (
-    // 2. Aplicamos el margen inferior dinámico
-    // En Android, insets.bottom suele ser el alto de la barra de navegación.
-    // Le sumamos 20 para mantener el efecto "flotante".
-    <View style={[styles.container, { bottom: (Platform.OS === 'android' ? 10 : 20) + insets.bottom }]}>
-      <View style={styles.glassBackground}>
+    <View style={[
+      styles.mainWrapper,
+      isAndroid ? styles.androidWrapper : styles.iosWrapper,
+      { paddingBottom: isAndroid ? 0 : insets.bottom } 
+    ]}>
+      <View style={[
+        styles.navContainer,
+        isAndroid ? styles.androidContainer : styles.iosContainer
+      ]}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           
@@ -49,13 +53,13 @@ export default function BottomNav({ state, descriptors, navigation }) {
               activeOpacity={0.8}
               style={[
                 styles.tabItem,
-                isFocused ? styles.tabItemActive : styles.tabItemInactive
+                isFocused ? (isAndroid ? styles.tabItemActiveAndroid : styles.tabItemActiveIOS) : styles.tabItemInactive
               ]}
             >
               <View style={styles.contentContainer}>
                 <Ionicons 
                   name={isFocused ? iconName : `${iconName}-outline`} 
-                  size={22} 
+                  size={24} 
                   color={isFocused ? "#2b5cb5" : "#9CA3AF"} 
                 />
                 
@@ -69,22 +73,27 @@ export default function BottomNav({ state, descriptors, navigation }) {
           );
         })}
       </View>
+      
+      {isAndroid && <View style={{ height: insets.bottom, backgroundColor: 'white' }} />}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  mainWrapper: {
     position: 'absolute',
-    // 'bottom' se controla dinámicamente en el componente
     left: 0,
     right: 0,
-    alignItems: 'center',
-    paddingHorizontal: 20, 
-    // Aseguramos que el menú esté por encima de cualquier otro elemento flotante
-    zIndex: 100, 
+    zIndex: 100,
   },
-  glassBackground: {
+  
+  // --- ESTILOS iOS (Flotante) ---
+  iosWrapper: {
+    bottom: 20,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  iosContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -93,45 +102,59 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 40,
     backgroundColor: 'white',
-    
-    // --- MEJORA VISUAL: Sombra más pronunciada ---
-    shadowColor: '#000', // Sombra negra pura para más contraste
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15, // Aumentado de 0.08 a 0.15 para que resalte más
+    shadowOpacity: 0.15,
     shadowRadius: 20,
-    elevation: 10, // Aumentado para Android
-    
     padding: 6, 
     borderWidth: 1,
-    // --- MEJORA VISUAL: Borde un poco más oscuro ---
-    borderColor: '#E5E7EB', // Gris medio (antes era muy claro)
+    borderColor: '#E5E7EB',
   },
-  
+  tabItemActiveIOS: {
+    flex: 2.5, 
+    backgroundColor: '#EFF6FF',
+    borderRadius: 30,
+  },
+
+  // --- ESTILOS ANDROID (Material Design / Barra Completa) ---
+  androidWrapper: {
+    bottom: 0,
+  },
+  androidContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around', 
+    width: '100%',
+    height: 65, 
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    elevation: 8, 
+    paddingHorizontal: 10,
+  },
+  tabItemActiveAndroid: {
+    flex: 2, 
+    backgroundColor: '#EFF6FF', 
+    borderRadius: 16, 
+    paddingVertical: 8, 
+  },
+
+  // --- ESTILOS COMUNES ---
   tabItem: {
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 30,
     overflow: 'hidden',
   },
-  
   tabItemInactive: {
     flex: 1, 
     backgroundColor: 'transparent',
   },
-  
-  tabItemActive: {
-    flex: 2.5, 
-    backgroundColor: '#EFF6FF' 
-  },
-  
   contentContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
   },
-  
   tabLabel: {
     color: '#2b5cb5',
     fontSize: 13,

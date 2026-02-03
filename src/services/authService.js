@@ -93,37 +93,62 @@ export const authenticateWithBiometrics = async () => {
   }
 };
 
-export const validateStartupSession = async () => {
+export const refreshSession = async (currentAccessToken, currentRefreshToken) => {
   try {
-    const refreshToken = await SecureStore.getItemAsync('refreshToken');
     const userId = await SecureStore.getItemAsync('userId');
-    const currentAccessToken = await SecureStore.getItemAsync('accessToken');
-
-    if (!refreshToken || !userId) {
-      return false;
-    }
+    if (!userId) throw new Error('No UserId found');
 
     const response = await axios.post(
       `${API_URL}/administration/AdminUsers/${userId}/refreshTokenMobile`,
       {
         accessToken: currentAccessToken || "",
-        refreshToken: refreshToken,
+        refreshToken: currentRefreshToken,
         expiresAt: new Date().toISOString()
       },
       { headers: { 'Content-Type': 'application/json' } }
     );
 
-    const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 
-    if (newAccessToken) {
-      await setSession(newAccessToken, newRefreshToken);
+export const performSilentLogin = async () => {
+  try {
+    const { username, password } = await getUserCredentials();
+    
+    if (username && password) {
+      const data = await login(username, password);
+      await setSession(data.accessToken, data.refreshToken);
+      return data.accessToken;
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const validateStartupSession = async () => {
+  try {
+    const refreshToken = await SecureStore.getItemAsync('refreshToken');
+    const currentAccessToken = await SecureStore.getItemAsync('accessToken');
+
+    if (!refreshToken) {
+      return false;
+    }
+
+    const data = await refreshSession(currentAccessToken, refreshToken);
+
+    if (data && data.accessToken) {
+      await setSession(data.accessToken, data.refreshToken);
       return true;
     }
     
     return false;
 
   } catch (error) {
-    await clearSession(); 
-    return false;
+    const newAccessToken = await performSilentLogin();
+    return !!newAccessToken;
   }
 };

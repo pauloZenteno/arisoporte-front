@@ -24,19 +24,37 @@ export const ClientProvider = ({ children }) => {
   const [loadingDemos, setLoadingDemos] = useState(false);
   const [demoPage, setDemoPage] = useState(1);
   const [hasMoreDemos, setHasMoreDemos] = useState(true);
-  const [activeDemoFilter, setActiveDemoFilter] = useState({ sortParam: 'TrialEndsAt', isDescending: false, sellerId: null });
+  
+  // 1. DEMOS: Se queda en 'TrialEndsAt' (Por Vencer)
+  const [activeDemoFilter, setActiveDemoFilter] = useState({ 
+    sortParam: 'TrialEndsAt', 
+    isDescending: false, 
+    sellerId: null 
+  });
 
   const [actives, setActives] = useState([]);
   const [loadingActives, setLoadingActives] = useState(false);
   const [activePage, setActivePage] = useState(1);
   const [hasMoreActives, setHasMoreActives] = useState(true);
-  const [activeActiveFilter, setActiveActiveFilter] = useState({ sortParam: 'CreatedAt', isDescending: true, sellerId: null });
+  
+  // 2. ACTIVOS: Cambiado a 'BusinessName' (Alfabético) por defecto
+  const [activeActiveFilter, setActiveActiveFilter] = useState({ 
+    sortParam: 'BusinessName', 
+    isDescending: false, 
+    sellerId: null 
+  });
 
   const [inactives, setInactives] = useState([]);
   const [loadingInactives, setLoadingInactives] = useState(false);
   const [inactivePage, setInactivePage] = useState(1);
   const [hasMoreInactives, setHasMoreInactives] = useState(true);
-  const [activeInactiveFilter, setActiveInactiveFilter] = useState({ sortParam: 'TrialEndsAt', isDescending: false, sellerId: null });
+  
+  // 3. INACTIVOS: Cambiado a 'BusinessName' (Alfabético) por defecto
+  const [activeInactiveFilter, setActiveInactiveFilter] = useState({ 
+    sortParam: 'BusinessName', 
+    isDescending: false, 
+    sellerId: null 
+  });
 
   const [quotes, setQuotes] = useState([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
@@ -131,7 +149,10 @@ export const ClientProvider = ({ children }) => {
   const fetchActives = async (page = 1, filters = activeActiveFilter, shouldRefresh = false, explicitUser = null) => {
     if (loadingActives || (!hasMoreActives && !shouldRefresh)) return;
     setLoadingActives(true);
+    
+    // NOTA: Si filters.sortParam ya es 'BusinessName', se usa tal cual.
     let finalSort = filters.sortParam === 'TrialEndsAt' ? 'CreatedAt' : filters.sortParam;
+    
     const apiFilters = { statuses: 1, types: false, sortParam: finalSort, isDescending: filters.isDescending, sellerId: filters.sellerId, filterActives: true };
     
     const { newItems, success } = await fetchGeneric('actives', page, apiFilters, explicitUser);
@@ -153,7 +174,9 @@ export const ClientProvider = ({ children }) => {
   const fetchInactives = async (page = 1, filters = activeInactiveFilter, shouldRefresh = false, explicitUser = null) => {
     if (loadingInactives || (!hasMoreInactives && !shouldRefresh)) return;
     setLoadingInactives(true);
+
     let finalSort = filters.sortParam === 'TrialEndsAt' ? 'CreatedAt' : filters.sortParam;
+    
     const apiFilters = { statuses: 2, sortParam: finalSort, isDescending: filters.isDescending, sellerId: filters.sellerId, filterActives: true };
     
     const { newItems, success } = await fetchGeneric('inactives', page, apiFilters, explicitUser);

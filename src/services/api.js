@@ -27,6 +27,11 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      
+      if (originalRequest.url.includes('/admin-login') || originalRequest.url.includes('/refreshTokenMobile')) {
+        return Promise.reject(error);
+      }
+
       originalRequest._retry = true;
 
       try {
@@ -34,40 +39,48 @@ api.interceptors.response.use(
         const currentRefreshToken = await SecureStore.getItemAsync('refreshToken');
         const currentAccessToken = await SecureStore.getItemAsync('accessToken');
 
-        if (!userId || !currentRefreshToken) {
-          throw new Error('No hay credenciales para refrescar');
-        }
+        if (userId && currentRefreshToken) {
+          const refreshResponse = await axios.post(
+            `${API_URL}/administration/AdminUsers/${userId}/refreshTokenMobile`,
+            {
+              accessToken: currentAccessToken || "",
+              refreshToken: currentRefreshToken,
+              expiresAt: new Date().toISOString()
+            },
+            { headers: { 'Content-Type': 'application/json' } }
+          );
 
-        const refreshResponse = await axios.post(
-          `${API_URL}/administration/AdminUsers/${userId}/refreshTokenMobile`,
-          {
-            accessToken: currentAccessToken || "",
-            refreshToken: currentRefreshToken,
-            expiresAt: new Date().toISOString()
-          },
-          { headers: { 'Content-Type': 'application/json' } }
-        );
+          const { accessToken: newAccessToken, refreshToken: newRefreshToken } = refreshResponse.data;
 
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken } = refreshResponse.data;
+          if (newAccessToken) {
+            await SecureStore.setItemAsync('accessToken', newAccessToken);
+            
+            if (newRefreshToken) {
+              await SecureStore.setItemAsync('refreshToken', newRefreshToken);
+            }
 
-        if (newAccessToken) {
-          await SecureStore.setItemAsync('accessToken', newAccessToken);
-          
-          if (newRefreshToken) {
-            await SecureStore.setItemAsync('refreshToken', newRefreshToken);
+            api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+            originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+            
+            return api(originalRequest);
           }
-
-          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-          
-          return api(originalRequest);
         }
+        throw new Error('Refresh failed');
       } catch (refreshError) {
-        await SecureStore.deleteItemAsync('accessToken');
-        await SecureStore.deleteItemAsync('refreshToken');
-        await SecureStore.deleteItemAsync('userInfo');
-        await SecureStore.deleteItemAsync('userId');
-        
-        return Promise.reject(refreshError);
+        try {
+          const authService = require('./authService');
+          const newAccessToken = await authService.performSilentLogin();
+
+          if (newAccessToken) {
+            api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+            originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+            return api(originalRequest);
+          }
+        } catch (silentLoginError) {
+          const authService = require('./authService');
+          await authService.clearSession();
+          return Promise.reject(silentLoginError);
+        }
       }
     }
 
