@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
-import { View, Platform } from 'react-native';
+import { View, Platform, LogBox } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { StatusBar } from 'expo-status-bar';
 
-// 1. IMPORTAMOS LA LIBRERÍA NATIVA (La que instalaste)
+// 1. LIBRERÍA NATIVA (Para iOS - Liquid Glass & SF Symbols)
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
 
-import { StatusBar } from 'expo-status-bar';
+// 2. LIBRERÍA ESTÁNDAR (Para Android - Estable y visible)
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+
+// Iconos Vectoriales
+import MaterialIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -20,89 +25,131 @@ import UsageReportScreen from './src/screens/reports/UsageReportScreen';
 
 import Header from './src/components/Header';
 import AnimatedSplashScreen from './src/screens/AnimatedSplashScreen'; 
-
 import { ClientProvider } from './src/context/ClientContext'; 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
+LogBox.ignoreLogs(['setLayoutAnimationEnabledExperimental']);
+
 const Stack = createNativeStackNavigator();
 
-// 2. CREAMOS EL NAVIGATOR NATIVO
-const Tab = createNativeBottomTabNavigator();
+// --- DEFINICIÓN DE LOS DOS NAVIGATORS ---
+const NativeTab = createNativeBottomTabNavigator(); // iOS
+const StandardTab = createBottomTabNavigator();     // Android
 
+// =====================================================================
+// CONFIGURACIÓN IOS (Nativa - SF Symbols - Translucent)
+// =====================================================================
+function IOSTabs() {
+  return (
+    <NativeTab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: '#2b5cb5',
+        translucent: true, // Efecto cristal nativo
+        tabBarStyle: {
+          position: 'absolute',
+          bottom: 0,
+        }
+      }}
+    >
+      <NativeTab.Screen 
+        name="Home" 
+        component={HomeScreen} 
+        options={{ 
+          tabBarLabel: 'Demos',
+          tabBarIcon: () => ({ sfSymbol: 'clock.fill' }),
+        }} 
+      />
+      <NativeTab.Screen 
+        name="Clients" 
+        component={ClientsScreen} 
+        options={{ 
+          tabBarLabel: 'Clientes',
+          tabBarIcon: () => ({ sfSymbol: 'person.2.fill' }),
+        }} 
+      />
+      <NativeTab.Screen 
+        name="Cotizador" 
+        component={CotizadorScreen} 
+        options={{ 
+          tabBarLabel: 'Cotizar',
+          tabBarIcon: () => ({ sfSymbol: 'doc.text.fill' }),
+        }} 
+      />
+      <NativeTab.Screen 
+        name="Reportes" 
+        component={ReportsScreen} 
+        options={{ 
+          tabBarLabel: 'Reportes',
+          tabBarIcon: () => ({ sfSymbol: 'chart.bar.fill' }),
+        }} 
+      />
+      <NativeTab.Screen 
+        name="Settings" 
+        component={SettingsScreen} 
+        options={{ 
+          tabBarLabel: 'Ajustes',
+          tabBarIcon: () => ({ sfSymbol: 'gearshape.fill' }),
+        }} 
+      />
+    </NativeTab.Navigator>
+  );
+}
+
+// =====================================================================
+// CONFIGURACIÓN ANDROID (Estándar - Material Icons - 100% Visible)
+// =====================================================================
+function AndroidTabs() {
+  return (
+    <StandardTab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: '#2b5cb5',
+        tabBarInactiveTintColor: 'gray',
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+          marginBottom: 5,
+        },
+        tabBarStyle: {
+          height: 80,
+          paddingBottom: 20,
+          paddingTop: 8,
+          backgroundColor: '#ffffff',
+          borderTopWidth: 0,
+          elevation: 0, 
+        },
+        // Aquí usamos componentes directos, sin imágenes ni trucos raros
+        tabBarIcon: ({ color, size }) => {
+          let iconName;
+          if (route.name === 'Home') iconName = 'clock-outline';
+          else if (route.name === 'Clients') iconName = 'account-group';
+          else if (route.name === 'Cotizador') iconName = 'file-document-edit';
+          else if (route.name === 'Reportes') iconName = 'chart-bar';
+          else if (route.name === 'Settings') iconName = 'cog';
+
+          return <MaterialIcons name={iconName} size={26} color={color} />;
+        },
+      })}
+    >
+      <StandardTab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Demos' }} />
+      <StandardTab.Screen name="Clients" component={ClientsScreen} options={{ tabBarLabel: 'Clientes' }} />
+      <StandardTab.Screen name="Cotizador" component={CotizadorScreen} options={{ tabBarLabel: 'Cotizar' }} />
+      <StandardTab.Screen name="Reportes" component={ReportsScreen} options={{ tabBarLabel: 'Reportes' }} />
+      <StandardTab.Screen name="Settings" component={SettingsScreen} options={{ tabBarLabel: 'Ajustes' }} />
+    </StandardTab.Navigator>
+  );
+}
+
+// =====================================================================
+// COMPONENTE PRINCIPAL (Selector)
+// =====================================================================
 function MainTabs({ navigation }) {
   return (
     <View style={{ flex: 1 }}>
       <Header navigation={navigation} />
-      
-      <Tab.Navigator
-        // 3. Opciones Globales Nativas
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveTintColor: '#2b5cb5', // Tu color azul
-          
-          // Estilo translúcido nativo de iOS (Blur automático)
-          translucent: true, 
-          
-          // En esta librería, el estilo se define diferente
-          tabBarStyle: {
-            position: 'absolute',
-            bottom: 0,
-          }
-        }}
-      >
-        <Tab.Screen 
-          name="Home" 
-          component={HomeScreen} 
-          options={{ 
-            tabBarLabel: 'Demos',
-            // 4. AQUÍ CAMBIA: Usamos sfSymbol para iOS
-            tabBarIcon: () => ({
-              sfSymbol: 'clock.fill', // SF Symbol para "Time"
-              // Para Android necesitarías un asset local, por ahora solo iOS se verá nativo 100%
-            }),
-          }} 
-        />
-        <Tab.Screen 
-          name="Clients" 
-          component={ClientsScreen} 
-          options={{ 
-            tabBarLabel: 'Clientes',
-            tabBarIcon: () => ({
-              sfSymbol: 'person.2.fill', // SF Symbol para "People"
-            }),
-          }} 
-        />
-        <Tab.Screen 
-          name="Cotizador" 
-          component={CotizadorScreen} 
-          options={{ 
-            tabBarLabel: 'Cotizar',
-            tabBarIcon: () => ({
-              sfSymbol: 'doc.text.fill', // SF Symbol para "Document"
-            }),
-          }} 
-        />
-        <Tab.Screen 
-          name="Reportes" 
-          component={ReportsScreen} 
-          options={{ 
-            tabBarLabel: 'Reportes',
-            tabBarIcon: () => ({
-              sfSymbol: 'chart.bar.fill', // SF Symbol para "Chart"
-            }),
-          }} 
-        />
-        <Tab.Screen 
-          name="Settings" 
-          component={SettingsScreen} 
-          options={{ 
-            tabBarLabel: 'Ajustes',
-            tabBarIcon: () => ({
-              sfSymbol: 'gearshape.fill', // SF Symbol para "Settings"
-            }),
-          }} 
-        />
-      </Tab.Navigator>
+      {/* El Switch Maestro: iOS usa uno, Android usa el otro */}
+      {Platform.OS === 'ios' ? <IOSTabs /> : <AndroidTabs />}
     </View>
   );
 }
@@ -112,22 +159,13 @@ function AppNavigation() {
   const [isSplashFinished, setIsSplashFinished] = useState(false);
 
   if (isLoading || !isSplashFinished) {
-    return (
-      <AnimatedSplashScreen 
-        onFinish={() => setIsSplashFinished(true)} 
-      />
-    );
+    return <AnimatedSplashScreen onFinish={() => setIsSplashFinished(true)} />;
   }
 
   return (
     <NavigationContainer>
       <StatusBar style="light" backgroundColor="transparent" translucent={true} />
-      <Stack.Navigator 
-        screenOptions={{ 
-          headerShown: false,
-          animation: 'default',
-        }}
-      >
+      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'default' }}>
         {isAuthenticated ? (
           <>
             <Stack.Screen name="MainTabs" component={MainTabs} />

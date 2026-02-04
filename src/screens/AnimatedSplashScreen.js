@@ -1,18 +1,8 @@
-import React, { useRef, useEffect } from 'react';
-import { StyleSheet, ImageBackground, Dimensions } from 'react-native'; 
+import React from 'react';
+import { StyleSheet, ImageBackground } from 'react-native';
 import LottieView from 'lottie-react-native';
 
-const { width, height } = Dimensions.get('window');
-
 export default function AnimatedSplashScreen({ onFinish }) {
-  const animation = useRef(null);
-
-  useEffect(() => {
-    if (animation.current) {
-      animation.current.play();
-    }
-  }, []);
-
   return (
     <ImageBackground 
       source={require('../../assets/splash-icon.png')} 
@@ -20,17 +10,19 @@ export default function AnimatedSplashScreen({ onFinish }) {
       resizeMode="cover"
     >
       <LottieView
-        ref={animation}
         source={require('../../assets/splash-animation.json')}
-        style={styles.lottie}
-        resizeMode="contain"
+        autoPlay
         loop={false}
         speed={0.8}
+        resizeMode="contain"
+        hardwareAccelerationAndroid={true}
+        renderMode="HARDWARE"
         onAnimationFinish={(isCancelled) => {
           if (!isCancelled) {
              onFinish();
           }
         }}
+        style={styles.lottie}
       />
     </ImageBackground>
   );
@@ -43,7 +35,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   lottie: {
-    width: width,
-    height: height,
+    width: '100%',
+    height: '100%',
   },
 });
