@@ -1,21 +1,14 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { useClients } from '../context/ClientContext';
 import { useAuth } from '../context/AuthContext';
-import { COLORS } from '../utils/colors';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 export default function SettingsScreen() {
   const { userProfile } = useClients();
   const { signOut } = useAuth();
-
-  const getInitials = () => {
-    if (!userProfile) return '';
-    const first = userProfile.firstName ? userProfile.firstName.charAt(0).toUpperCase() : '';
-    const last = userProfile.lastName ? userProfile.lastName.charAt(0).toUpperCase() : '';
-    return `${first}${last}`;
-  };
+  const { colors, isDark } = useThemeColors();
 
   const handleLogout = () => {
     Alert.alert(
@@ -39,48 +32,56 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.mainContainer}>
+    <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         
         <View style={styles.profileSection}>
-            <View style={styles.avatarContainer}>
-                <Text style={styles.avatarText}>
-                    {getInitials() || '?'}
-                </Text>
-            </View>
-            
-            <Text style={styles.nameText}>
+            <Text style={[styles.nameText, { color: colors.text }]}>
                 {userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : 'Usuario'}
             </Text>
-            <Text style={styles.jobText}>
+            <Text style={[styles.jobText, { color: colors.textSecondary }]}>
                 {userProfile ? userProfile.jobPosition : ''}
             </Text>
         </View>
 
         <View style={styles.menuContainer}>
-            <Text style={styles.sectionHeader}>GENERAL</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>GENERAL</Text>
             
-            <TouchableOpacity style={styles.menuItem} onPress={handleNotifications} activeOpacity={0.7}>
-                <View style={[styles.menuIconBox, { backgroundColor: '#EFF6FF' }]}>
-                    <Ionicons name="notifications-outline" size={20} color={COLORS.primary} />
+            <TouchableOpacity 
+                style={[styles.menuItem, { backgroundColor: colors.card }]} 
+                onPress={handleNotifications} 
+                activeOpacity={0.7}
+            >
+                <View style={[
+                    styles.menuIconBox, 
+                    { backgroundColor: isDark ? 'rgba(96, 165, 250, 0.15)' : '#EFF6FF' }
+                ]}>
+                    <Ionicons name="notifications-outline" size={20} color={colors.primary} />
                 </View>
-                <Text style={styles.menuText}>Notificaciones</Text>
-                <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+                <Text style={[styles.menuText, { color: colors.text }]}>Notificaciones</Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
 
             <View style={{ height: 20 }} />
 
-            <TouchableOpacity style={styles.menuItem} onPress={handleLogout} activeOpacity={0.7}>
-                <View style={[styles.menuIconBox, { backgroundColor: '#FEF2F2' }]}>
-                    <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
+            <TouchableOpacity 
+                style={[styles.menuItem, { backgroundColor: colors.card }]} 
+                onPress={handleLogout} 
+                activeOpacity={0.7}
+            >
+                <View style={[
+                    styles.menuIconBox, 
+                    { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2' }
+                ]}>
+                    <Ionicons name="log-out-outline" size={20} color={colors.danger} />
                 </View>
-                <Text style={[styles.menuText, { color: COLORS.danger }]}>Cerrar Sesión</Text>
-                <Ionicons name="chevron-forward" size={20} color="#FCA5A5" />
+                <Text style={[styles.menuText, { color: colors.danger }]}>Cerrar Sesión</Text>
+                <Ionicons name="chevron-forward" size={20} color={isDark ? colors.danger : "#FCA5A5"} />
             </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
-            <Text style={styles.versionText}>Ari Soporte v1.0.0</Text>
+            <Text style={[styles.versionText, { color: colors.textSecondary }]}>Ari Soporte v1.0.0</Text>
         </View>
       </View>
     </View>
@@ -90,7 +91,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: COLORS.background,
     paddingTop: 30, 
   },
   content: {
@@ -98,43 +98,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   profileSection: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 40,
-    marginTop: 20
-  },
-  avatarContainer: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: COLORS.primary, 
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 15,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
-    borderWidth: 4,
-    borderColor: COLORS.white
-  },
-  avatarText: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: COLORS.white,
-    letterSpacing: 1
+    marginTop: 40,
+    paddingHorizontal: 4
   },
   nameText: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '800',
-    color: COLORS.text,
     marginBottom: 4,
-    textAlign: 'center',
+    textAlign: 'left',
+    letterSpacing: -0.5
   },
   jobText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
+    fontSize: 16,
+    textAlign: 'left',
     fontWeight: '500'
   },
   menuContainer: {
@@ -143,7 +121,6 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#9CA3AF',
     marginBottom: 10,
     marginLeft: 4,
     letterSpacing: 0.5
@@ -151,7 +128,6 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
     padding: 16,
     borderRadius: 16,
     shadowColor: '#000',
@@ -173,7 +149,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
   },
   footer: {
     padding: 20,
@@ -181,7 +156,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   versionText: {
-    color: '#D1D5DB',
     fontSize: 12,
     fontWeight: '500'
   },

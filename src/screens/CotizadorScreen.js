@@ -6,10 +6,11 @@ import ClientFilterHeader from '../components/ClientFilterHeader';
 import QuoteCard from '../components/cards/QuoteCard';
 import { SELLER_OPTIONS } from '../utils/constants';
 import { getQuoteById, downloadQuotePdf } from '../services/quoteService';
-import { COLORS } from '../utils/colors';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const CotizadorScreen = ({ navigation }) => {
   const { quotes, loadingQuotes, hasMoreQuotes, fetchQuotes, refreshQuotes } = useClients();
+  const { colors, isDark } = useThemeColors();
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -132,7 +133,14 @@ const CotizadorScreen = ({ navigation }) => {
 
   const renderListHeader = () => (
     <View style={styles.listHeaderContainer}>
-        <TouchableOpacity style={styles.createButton} onPress={handleCreate} activeOpacity={0.8}>
+        <TouchableOpacity 
+            style={[
+                styles.createButton,
+                isDark && { backgroundColor: 'rgba(21, 200, 153, 0.15)', borderColor: '#15c899' }
+            ]} 
+            onPress={handleCreate} 
+            activeOpacity={0.8}
+        >
             <View style={styles.createIconBg}>
                 <Ionicons name="add" size={20} color="white" />
             </View>
@@ -145,8 +153,8 @@ const CotizadorScreen = ({ navigation }) => {
     if (loadingQuotes && quotes.length > 0) {
         return (
             <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color={COLORS.primary} />
-                <Text style={styles.footerText}>Cargando más...</Text>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.footerText, { color: colors.textSecondary }]}>Cargando más...</Text>
             </View>
         );
     }
@@ -154,12 +162,19 @@ const CotizadorScreen = ({ navigation }) => {
     if (hasMoreQuotes && quotes.length > 0) {
         return (
             <TouchableOpacity 
-                style={styles.loadMoreButton} 
+                style={[
+                    styles.loadMoreButton,
+                    { 
+                        backgroundColor: colors.card,
+                        borderColor: colors.primary,
+                        shadowColor: colors.primary
+                    }
+                ]} 
                 onPress={fetchQuotes}
                 activeOpacity={0.7}
             >
-                <Text style={styles.loadMoreText}>Cargar más cotizaciones</Text>
-                <Ionicons name="chevron-down-circle-outline" size={18} color={COLORS.primary} style={{ marginLeft: 8 }} />
+                <Text style={[styles.loadMoreText, { color: colors.primary }]}>Cargar más cotizaciones</Text>
+                <Ionicons name="chevron-down-circle-outline" size={18} color={colors.primary} style={{ marginLeft: 8 }} />
             </TouchableOpacity>
         );
     }
@@ -170,7 +185,7 @@ const CotizadorScreen = ({ navigation }) => {
   const layoutReady = controlsHeight > 0;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       
       <Animated.View 
         style={[
@@ -178,7 +193,8 @@ const CotizadorScreen = ({ navigation }) => {
             { 
                 top: 0, 
                 transform: [{ translateY }],
-                opacity: layoutReady ? 1 : 0 
+                opacity: layoutReady ? 1 : 0,
+                backgroundColor: colors.background
             }
         ]}
         onLayout={(e) => setControlsHeight(e.nativeEvent.layout.height)}
@@ -203,7 +219,6 @@ const CotizadorScreen = ({ navigation }) => {
             ListFooterComponent={renderFooter}
             
             contentContainerStyle={{ 
-                // AJUSTE DE UI: Eliminamos el offset extra, ahora empieza justo donde termina el header
                 paddingTop: controlsHeight, 
                 paddingBottom: 120, 
                 paddingHorizontal: 20 
@@ -223,16 +238,16 @@ const CotizadorScreen = ({ navigation }) => {
 
             ListEmptyComponent={
                 <View style={styles.center}>
-                    <Ionicons name="document-text-outline" size={48} color={COLORS.border} />
-                    <Text style={styles.emptyText}>
+                    <Ionicons name="document-text-outline" size={48} color={colors.border} />
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                         {debouncedQuery ? 'No hay resultados.' : 'No hay cotizaciones.'}
                     </Text>
                 </View>
             }
         />
       ) : (
-         <View style={styles.centerLoading}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+         <View style={[styles.centerLoading, { backgroundColor: colors.background }]}>
+            <ActivityIndicator size="large" color={colors.primary} />
          </View>
       )}
 
@@ -241,14 +256,13 @@ const CotizadorScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1 },
   
   collapsibleWrapper: {
     position: 'absolute',
     left: 0, right: 0,
     zIndex: 50, 
     elevation: 5,
-    backgroundColor: COLORS.background, 
   },
   
   controlsContent: {
@@ -258,7 +272,6 @@ const styles = StyleSheet.create({
   },
 
   listHeaderContainer: {
-    // AJUSTE DE UI: Reducimos drásticamente el margen superior para pegarlo al filtro
     marginTop: 5, 
     marginBottom: 15,
   },
@@ -272,7 +285,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#d1fae5', 
+    borderColor: '#15c899', 
     shadowColor: '#15c899',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -296,12 +309,11 @@ const styles = StyleSheet.create({
   },
 
   center: { marginTop: 100, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { marginTop: 10, color: COLORS.textSecondary, fontSize: 16 },
+  emptyText: { marginTop: 10, fontSize: 16 },
 
   centerLoading: {
       position: 'absolute',
       left: 0, right: 0, top: 0, bottom: 0,
-      backgroundColor: COLORS.background,
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 999
@@ -311,21 +323,17 @@ const styles = StyleSheet.create({
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: COLORS.white,
       paddingVertical: 12,
       marginVertical: 20,
       marginHorizontal: 40,
       borderRadius: 25,
       borderWidth: 1,
-      borderColor: COLORS.primary,
-      shadowColor: COLORS.primary,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 2
   },
   loadMoreText: {
-      color: COLORS.primary,
       fontWeight: '700',
       fontSize: 14
   },
@@ -337,7 +345,6 @@ const styles = StyleSheet.create({
       gap: 10
   },
   footerText: {
-      color: COLORS.textSecondary,
       fontSize: 13,
       fontWeight: '500'
   }

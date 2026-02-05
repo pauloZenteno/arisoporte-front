@@ -5,10 +5,12 @@ import { SELLER_MAP } from '../../utils/constants';
 import { openWhatsApp } from '../../utils/actions';
 import { useAuth } from '../../context/AuthContext';
 import { PERMISSIONS, hasPermission } from '../../utils/permissions';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 const InactiveClientCard = React.memo(({ item, isExpanded, onPress, onReactivate }) => {
   if (!item) return null;
 
+  const { colors, isDark } = useThemeColors();
   const { userProfile } = useAuth();
 
   const canReactivate = useMemo(() => 
@@ -35,15 +37,26 @@ const InactiveClientCard = React.memo(({ item, isExpanded, onPress, onReactivate
   };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
+    <TouchableOpacity 
+      style={[styles.card, { backgroundColor: colors.card }]} 
+      onPress={onPress} 
+      activeOpacity={0.9}
+    >
       <View style={styles.cardMainRow}>
         <View style={styles.infoContainer}>
-          <Text style={styles.clientName} numberOfLines={1}>{item.businessName || item.name}</Text>
-          <Text style={styles.clientAlias}>@{item.alias}</Text>
+          <Text style={[styles.clientName, { color: colors.text }]} numberOfLines={1}>
+            {item.businessName || item.name}
+          </Text>
+          <Text style={[styles.clientAlias, { color: colors.textSecondary }]}>
+            @{item.alias}
+          </Text>
         </View>
         
         <View style={styles.rightContainer}>
-            <View style={styles.statusBadge}>
+            <View style={[
+              styles.statusBadge, 
+              { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED' }
+            ]}>
                 <Ionicons name="alert-circle" size={12} color="#EA580C" style={{marginRight: 4}} />
                 <Text style={styles.statusText}>Suspendido</Text>
             </View>
@@ -51,7 +64,7 @@ const InactiveClientCard = React.memo(({ item, isExpanded, onPress, onReactivate
             <Ionicons 
                 name={isExpanded ? "chevron-up" : "chevron-down"} 
                 size={20} 
-                color="#9CA3AF" 
+                color={colors.textSecondary} 
                 style={{ marginTop: 8 }}
             />
         </View>
@@ -59,12 +72,12 @@ const InactiveClientCard = React.memo(({ item, isExpanded, onPress, onReactivate
 
       {isExpanded && (
         <View style={styles.expandedContent}>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           
           {sellerName && (
             <View style={styles.metaRow}>
-                <Ionicons name="person-outline" size={16} color="#6B7280" />
-                <Text style={styles.metaText}>{sellerName}</Text>
+                <Ionicons name="person-outline" size={16} color={colors.textSecondary} />
+                <Text style={[styles.metaText, { color: colors.textSecondary }]}>{sellerName}</Text>
             </View>
           )}
 
@@ -74,16 +87,23 @@ const InactiveClientCard = React.memo(({ item, isExpanded, onPress, onReactivate
                 onPress={handleContact}
               >
                   <Ionicons name="logo-whatsapp" size={18} color="white" />
-                  <Text style={styles.actionText}>Contactar</Text>
+                  <Text style={[styles.actionText, { color: 'white' }]}>Contactar</Text>
               </TouchableOpacity>
               
               {canReactivate && (
                   <TouchableOpacity 
-                    style={[styles.actionButton, styles.btnReactivate]}
+                    style={[
+                      styles.actionButton, 
+                      styles.btnReactivate, 
+                      { 
+                        backgroundColor: colors.card, 
+                        borderColor: colors.primary 
+                      }
+                    ]}
                     onPress={handleReactivate}
                   >
-                      <Ionicons name="refresh" size={18} color="#2b5cb5" />
-                      <Text style={[styles.actionText, styles.textReactivate]}>Reactivar</Text>
+                      <Ionicons name="refresh" size={18} color={colors.primary} />
+                      <Text style={[styles.actionText, styles.textReactivate, { color: colors.primary }]}>Reactivar</Text>
                   </TouchableOpacity>
               )}
           </View>
@@ -94,24 +114,24 @@ const InactiveClientCard = React.memo(({ item, isExpanded, onPress, onReactivate
 });
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: 'white', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
+  card: { borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
   cardMainRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   infoContainer: { flex: 1, marginRight: 10, justifyContent: 'center' },
   rightContainer: { alignItems: 'flex-end', justifyContent: 'flex-start' },
-  clientName: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 },
-  clientAlias: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF7ED', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }, 
+  clientName: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  clientAlias: { fontSize: 13, fontWeight: '500' },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }, 
   statusText: { color: '#EA580C', fontSize: 11, fontWeight: '700' },
   expandedContent: { marginTop: 20 },
-  divider: { height: 1, backgroundColor: '#F3F4F6', marginBottom: 15 },
+  divider: { height: 1, marginBottom: 15 },
   metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-  metaText: { fontSize: 13, color: '#4B5563', marginLeft: 8, fontWeight: '500' },
+  metaText: { fontSize: 13, marginLeft: 8, fontWeight: '500' },
   actionsContainer: { flexDirection: 'row', gap: 12 },
   actionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 10 },
   btnWhatsapp: { backgroundColor: '#25D366', shadowColor: '#25D366', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.3, shadowRadius: 4, elevation: 2 },
-  btnReactivate: { backgroundColor: 'white', borderWidth: 1, borderColor: '#2b5cb5' },
-  actionText: { color: 'white', fontSize: 14, fontWeight: '600', marginLeft: 6 },
-  textReactivate: { color: '#2b5cb5' },
+  btnReactivate: { borderWidth: 1 },
+  actionText: { fontSize: 14, fontWeight: '600', marginLeft: 6 },
+  textReactivate: { },
 });
 
 export default InactiveClientCard;

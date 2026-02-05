@@ -1,14 +1,24 @@
 import React from 'react';
-import { StyleSheet, ImageBackground } from 'react-native';
+import { StyleSheet, ImageBackground, StatusBar } from 'react-native';
 import LottieView from 'lottie-react-native';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 export default function AnimatedSplashScreen({ onFinish }) {
+  const { isDark } = useThemeColors();
+
   return (
     <ImageBackground 
-      source={require('../../assets/splash-icon.png')} 
-      style={styles.container}
-      resizeMode="cover"
+      source={isDark 
+        ? require('../../assets/splash-dark.png') 
+        : require('../../assets/splash-icon.png')
+      } 
+      style={[
+        styles.container, 
+        { backgroundColor: isDark ? '#0F172A' : '#4c7dd8' }
+      ]}
+      resizeMode="contain" 
     >
+      <StatusBar hidden />
       <LottieView
         source={require('../../assets/splash-animation.json')}
         autoPlay

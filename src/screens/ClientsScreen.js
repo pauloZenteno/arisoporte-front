@@ -7,7 +7,7 @@ import { PERMISSIONS, hasPermission } from '../utils/permissions';
 import ActiveClientCard from '../components/cards/ActiveClientCard';
 import InactiveClientCard from '../components/cards/InactiveClientCard';
 import ClientFilterHeader from '../components/ClientFilterHeader';
-import { COLORS } from '../utils/colors';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -16,6 +16,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const ClientsScreen = () => {
     const navigation = useNavigation();
     const { userProfile } = useAuth();
+    const { colors, isDark } = useThemeColors();
     
     useEffect(() => {
         navigation.setOptions({ headerShown: false });
@@ -86,8 +87,6 @@ const ClientsScreen = () => {
         return result;
     };
 
-    // --- OPTIMIZACIÓN 1: useCallback para renderItem ---
-    // Esto evita que se cree una nueva función para cada item en cada render
     const renderClientItem = useCallback(({ item }) => {
         if (!item) return null;
         
@@ -140,7 +139,7 @@ const ClientsScreen = () => {
         if (fixedHeight === 0) {
             return (
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             );
         }
@@ -148,7 +147,7 @@ const ClientsScreen = () => {
         if (isLoading && baseData.length === 0) {
             return (
                 <View style={[styles.center, { marginTop: fixedHeight + controlsHeight }]}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             );
         }
@@ -156,16 +155,14 @@ const ClientsScreen = () => {
         return (
             <Animated.FlatList
                 data={data}
-                // --- OPTIMIZACIÓN 2: Key extractor simple y estable ---
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={renderClientItem}
                 
-                // --- OPTIMIZACIÓN 3: Props de rendimiento ---
-                initialNumToRender={8}       // Renderiza solo los necesarios para llenar la pantalla al inicio
-                maxToRenderPerBatch={10}     // Renderiza en lotes pequeños al hacer scroll
-                windowSize={5}               // Reduce la memoria manteniendo menos items fuera de pantalla (default es 21)
-                removeClippedSubviews={true} // Desmonta vistas fuera de pantalla (Vital en Android)
-                updateCellsBatchingPeriod={50} // Espera 50ms entre actualizaciones de lotes
+                initialNumToRender={8}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                removeClippedSubviews={true}
+                updateCellsBatchingPeriod={50}
                 
                 onEndReached={fetchMore}
                 onEndReachedThreshold={0.5}
@@ -180,7 +177,7 @@ const ClientsScreen = () => {
                 scrollEventThrottle={16}
                 ListEmptyComponent={
                     <View style={styles.center}>
-                        <Text style={styles.emptyText}>
+                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                             {searchQuery.length > 0 
                                 ? 'No se encontraron coincidencias.' 
                                 : `No hay clientes ${isActives ? 'activos' : 'inactivos'} disponibles.`}
@@ -192,23 +189,30 @@ const ClientsScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <View 
-                style={styles.fixedSectionWrapper}
+                style={[styles.fixedSectionWrapper, { backgroundColor: colors.background }]}
                 onLayout={(e) => setFixedHeight(e.nativeEvent.layout.height)}
             >
                 <View style={styles.tabContainer}>
                     
-                    {/* PESTAÑA ACTIVOS (VERDE) */}
                     <TouchableOpacity 
                         style={[
                             styles.tab, 
-                            viewMode === 'actives' && styles.activeTabGreen
+                            { 
+                                backgroundColor: colors.card, 
+                                borderColor: colors.border 
+                            },
+                            viewMode === 'actives' && (isDark 
+                                ? { backgroundColor: 'rgba(5, 150, 105, 0.15)', borderColor: '#059669' } 
+                                : styles.activeTabGreen
+                            )
                         ]} 
                         onPress={() => setViewMode('actives')}
                     >
                         <Text style={[
                             styles.tabText, 
+                            { color: colors.textSecondary },
                             viewMode === 'actives' && styles.activeTabTextGreen
                         ]}>
                             Activos
@@ -217,16 +221,23 @@ const ClientsScreen = () => {
 
                     <View style={{ width: 10 }} /> 
 
-                    {/* PESTAÑA INACTIVOS (NARANJA) */}
                     <TouchableOpacity 
                         style={[
                             styles.tab, 
-                            viewMode === 'inactives' && styles.activeTabOrange
+                            { 
+                                backgroundColor: colors.card, 
+                                borderColor: colors.border 
+                            },
+                            viewMode === 'inactives' && (isDark 
+                                ? { backgroundColor: 'rgba(234, 88, 12, 0.15)', borderColor: '#EA580C' }
+                                : styles.activeTabOrange
+                            )
                         ]} 
                         onPress={() => setViewMode('inactives')}
                     >
                         <Text style={[
                             styles.tabText, 
+                            { color: colors.textSecondary },
                             viewMode === 'inactives' && styles.activeTabTextOrange
                         ]}>
                             Inactivos
@@ -241,7 +252,8 @@ const ClientsScreen = () => {
                     { 
                         top: fixedHeight,
                         transform: [{ translateY }],
-                        opacity: (fixedHeight > 0) ? 1 : 0 
+                        opacity: (fixedHeight > 0) ? 1 : 0,
+                        backgroundColor: colors.background
                     }
                 ]}
                 onLayout={(e) => setControlsHeight(e.nativeEvent.layout.height)}
@@ -254,13 +266,13 @@ const ClientsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
+    container: { flex: 1 },
     fixedSectionWrapper: {
-        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: COLORS.background, paddingBottom: 5,
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, paddingBottom: 5,
         paddingTop: Platform.OS === 'android' ? 0 : 0 
     },
     collapsibleWrapper: {
-        position: 'absolute', left: 0, right: 0, zIndex: 50, elevation: 5, backgroundColor: COLORS.background, paddingTop: 10,
+        position: 'absolute', left: 0, right: 0, zIndex: 50, elevation: 5, paddingTop: 10,
     },
     tabContainer: {
         flexDirection: 'row', 
@@ -269,23 +281,18 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     
-    // Estilos Base del Tab
     tab: { 
         flex: 1, 
         paddingVertical: 10, 
         alignItems: 'center', 
         borderRadius: 10,
         borderWidth: 1,           
-        borderColor: '#E5E7EB',   
-        backgroundColor: 'white', 
     },
     tabText: { 
         fontSize: 14, 
         fontWeight: '600', 
-        color: '#6B7280' 
     },
 
-    // ESTILOS ACTIVOS (VERDE)
     activeTabGreen: { 
         backgroundColor: '#ECFDF5', 
         borderColor: '#059669',     
@@ -296,7 +303,6 @@ const styles = StyleSheet.create({
         fontWeight: '700'
     },
 
-    // ESTILOS INACTIVOS (NARANJA)
     activeTabOrange: { 
         backgroundColor: '#FFF7ED', 
         borderColor: '#EA580C',     
@@ -308,7 +314,7 @@ const styles = StyleSheet.create({
     },
 
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
-    emptyText: { color: COLORS.textSecondary, fontSize: 16, textAlign: 'center', marginTop: 10 }
+    emptyText: { fontSize: 16, textAlign: 'center', marginTop: 10 }
 });
 
 export default ClientsScreen;

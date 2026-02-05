@@ -8,32 +8,39 @@ import {
     ActivityIndicator, 
     Dimensions,
     TouchableOpacity,
-    Platform,
-    StatusBar
+    Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart } from 'react-native-chart-kit';
 import { useNavigation } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getClients } from '../../services/clientService';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
-const StatCard = ({ title, value, icon, color, fullWidth, bg }) => (
+const StatCard = ({ title, value, icon, color, fullWidth, bg, colors, isDark }) => (
     <View style={[
         styles.statCard, 
         fullWidth && styles.fullWidthCard,
-        bg && { backgroundColor: bg, borderColor: 'transparent' }
+        { backgroundColor: bg ? (isDark ? colors.card : bg) : colors.card, borderColor: colors.border }
     ]}>
-        <View style={[styles.iconContainer, { backgroundColor: bg ? 'white' : color + '20' }]}>
+        <View style={[
+            styles.iconContainer, 
+            { backgroundColor: bg ? (isDark ? 'transparent' : 'white') : (isDark ? 'rgba(255,255,255,0.05)' : color + '20') }
+        ]}>
             <Ionicons name={icon} size={24} color={color} />
         </View>
         <View style={styles.statContent}>
-            <Text style={[styles.statValue, bg && { color: color }]}>{value}</Text>
-            <Text style={[styles.statTitle, bg && { color: color, opacity: 0.8 }]}>{title}</Text>
+            <Text style={[styles.statValue, { color: bg && !isDark ? color : colors.text }]}>{value}</Text>
+            <Text style={[styles.statTitle, { color: bg && !isDark ? color : colors.textSecondary, opacity: 0.8 }]}>{title}</Text>
         </View>
     </View>
 );
 
 export default function GeneralReportScreen() {
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
+    const { colors, isDark } = useThemeColors();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     
@@ -105,48 +112,55 @@ export default function GeneralReportScreen() {
     }, []);
 
     const clientChartData = [
-        { name: "Activos", population: stats.clientActive, color: "#10B981", legendFontColor: "#7F7F7F", legendFontSize: 12 },
-        { name: "Suspendidos", population: stats.clientSuspended, color: "#F59E0B", legendFontColor: "#7F7F7F", legendFontSize: 12 },
-        { name: "Cancelados", population: stats.clientCancelled, color: "#EF4444", legendFontColor: "#7F7F7F", legendFontSize: 12 }
+        { name: "Activos", population: stats.clientActive, color: "#10B981", legendFontColor: colors.textSecondary, legendFontSize: 12 },
+        { name: "Suspendidos", population: stats.clientSuspended, color: "#F59E0B", legendFontColor: colors.textSecondary, legendFontSize: 12 },
+        { name: "Cancelados", population: stats.clientCancelled, color: "#EF4444", legendFontColor: colors.textSecondary, legendFontSize: 12 }
     ];
 
     const demoChartData = [
-        { name: "Activos", population: stats.demoActive, color: "#8B5CF6", legendFontColor: "#7F7F7F", legendFontSize: 12 },
-        { name: "Vencidos", population: stats.demoSuspended, color: "#F59E0B", legendFontColor: "#7F7F7F", legendFontSize: 12 },
-        { name: "Cancelados", population: stats.demoCancelled, color: "#EF4444", legendFontColor: "#7F7F7F", legendFontSize: 12 }
+        { name: "Activos", population: stats.demoActive, color: "#8B5CF6", legendFontColor: colors.textSecondary, legendFontSize: 12 },
+        { name: "Vencidos", population: stats.demoSuspended, color: "#F59E0B", legendFontColor: colors.textSecondary, legendFontSize: 12 },
+        { name: "Cancelados", population: stats.demoCancelled, color: "#EF4444", legendFontColor: colors.textSecondary, legendFontSize: 12 }
     ];
 
     if (loading) {
         return (
-            <View style={styles.center}>
-                <ActivityIndicator size="large" color="#2b5cb5" />
+            <View style={[styles.center, { backgroundColor: colors.background }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
             </View>
         );
     }
 
     return (
-        <View style={styles.container}>
-            <View style={styles.customHeader}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <StatusBar style={isDark ? "light" : "dark"} backgroundColor={colors.card} />
+            
+            <View style={[
+                styles.customHeader, 
+                { 
+                    paddingTop: insets.top + 10, 
+                    backgroundColor: colors.card, 
+                    borderBottomColor: colors.border 
+                }
+            ]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={24} color="#111827" />
+                    <Ionicons name="chevron-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Reporte General</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Reporte General</Text>
                 <View style={styles.headerRightPlaceholder} />
             </View>
 
             <ScrollView 
                 contentContainerStyle={styles.scrollContent}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
             >
                 <View style={styles.headerSection}>
-                    <Text style={styles.dateLabel}>Actualizado: {new Date().toLocaleDateString()}</Text>
-                    {/* Texto eliminado por ti, ajustamos los márgenes abajo en styles */}
+                    <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>Actualizado: {new Date().toLocaleDateString()}</Text>
                 </View>
 
-                {/* SECCIÓN CARTERA */}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Cartera (Clientes)</Text>
-                    <View style={styles.line} />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Cartera (Clientes)</Text>
+                    <View style={[styles.line, { backgroundColor: colors.border }]} />
                 </View>
 
                 <View style={styles.sectionContainer}>
@@ -154,19 +168,23 @@ export default function GeneralReportScreen() {
                         title="Total Cartera" 
                         value={stats.clientTotal} 
                         icon="briefcase" 
-                        color="#2b5cb5"
+                        color={colors.primary}
                         fullWidth
-                        bg="#EFF6FF"
+                        bg={isDark ? null : "#EFF6FF"}
+                        colors={colors}
+                        isDark={isDark}
                     />
                 </View>
 
-                <View style={styles.chartCard}>
-                    <Text style={styles.cardTitle}>Estatus de Clientes</Text>
+                <View style={[styles.chartCard, { backgroundColor: colors.card, shadowColor: isDark ? '#000' : '#000' }]}>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>Estatus de Clientes</Text>
                     <PieChart
                         data={clientChartData}
                         width={screenWidth - 60}
                         height={200}
-                        chartConfig={{ color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})` }}
+                        chartConfig={{ 
+                            color: (opacity = 1) => isDark ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
+                        }}
                         accessor={"population"}
                         backgroundColor={"transparent"}
                         paddingLeft={"15"}
@@ -177,19 +195,18 @@ export default function GeneralReportScreen() {
 
                 <View style={styles.statsContainer}>
                     <View style={styles.row}>
-                        <StatCard title="Activos" value={stats.clientActive} icon="checkmark-circle" color="#10B981" />
-                        <StatCard title="Suspendidos" value={stats.clientSuspended} icon="warning" color="#F59E0B" />
+                        <StatCard title="Activos" value={stats.clientActive} icon="checkmark-circle" color="#10B981" colors={colors} isDark={isDark} />
+                        <StatCard title="Suspendidos" value={stats.clientSuspended} icon="warning" color="#F59E0B" colors={colors} isDark={isDark} />
                     </View>
                     <View style={styles.row}>
-                        <StatCard title="Cancelados" value={stats.clientCancelled} icon="close-circle" color="#EF4444" />
+                        <StatCard title="Cancelados" value={stats.clientCancelled} icon="close-circle" color="#EF4444" colors={colors} isDark={isDark} />
                         <View style={{flex: 1}} />
                     </View>
                 </View>
 
-                {/* SECCIÓN PROSPECTOS */}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Prospectos (Demos)</Text>
-                    <View style={styles.line} />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Prospectos (Demos)</Text>
+                    <View style={[styles.line, { backgroundColor: colors.border }]} />
                 </View>
 
                 <View style={styles.sectionContainer}>
@@ -199,17 +216,21 @@ export default function GeneralReportScreen() {
                         icon="flask" 
                         color="#8B5CF6"
                         fullWidth
-                        bg="#F5F3FF"
+                        bg={isDark ? null : "#F5F3FF"}
+                        colors={colors}
+                        isDark={isDark}
                     />
                 </View>
 
-                <View style={styles.chartCard}>
-                    <Text style={styles.cardTitle}>Estatus de Demos</Text>
+                <View style={[styles.chartCard, { backgroundColor: colors.card, shadowColor: isDark ? '#000' : '#000' }]}>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>Estatus de Demos</Text>
                     <PieChart
                         data={demoChartData}
                         width={screenWidth - 60}
                         height={200}
-                        chartConfig={{ color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})` }}
+                        chartConfig={{ 
+                            color: (opacity = 1) => isDark ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
+                        }}
                         accessor={"population"}
                         backgroundColor={"transparent"}
                         paddingLeft={"15"}
@@ -220,11 +241,11 @@ export default function GeneralReportScreen() {
 
                 <View style={styles.statsContainer}>
                     <View style={styles.row}>
-                        <StatCard title="En Prueba" value={stats.demoActive} icon="timer" color="#8B5CF6" />
-                        <StatCard title="Vencidos" value={stats.demoSuspended} icon="alert-circle" color="#F59E0B" />
+                        <StatCard title="En Prueba" value={stats.demoActive} icon="timer" color="#8B5CF6" colors={colors} isDark={isDark} />
+                        <StatCard title="Vencidos" value={stats.demoSuspended} icon="alert-circle" color="#F59E0B" colors={colors} isDark={isDark} />
                     </View>
                     <View style={styles.row}>
-                        <StatCard title="Cancelados" value={stats.demoCancelled} icon="close-circle" color="#EF4444" />
+                        <StatCard title="Cancelados" value={stats.demoCancelled} icon="close-circle" color="#EF4444" colors={colors} isDark={isDark} />
                         <View style={{flex: 1}} />
                     </View>
                 </View>
@@ -238,7 +259,6 @@ export default function GeneralReportScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
     },
     customHeader: {
         flexDirection: 'row',
@@ -246,18 +266,15 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingBottom: 12,
-        backgroundColor: 'white',
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 30) + 10 : 65 
     },
     backButton: { paddingRight: 16 },
-    headerTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
+    headerTitle: { fontSize: 17, fontWeight: '700' },
     headerRightPlaceholder: { width: 40 },
 
     scrollContent: {
         padding: 20,
-        paddingTop: 10 // Reduje el padding top del scroll
+        paddingTop: 10
     },
     center: {
         flex: 1,
@@ -265,41 +282,36 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     headerSection: {
-        marginBottom: 5, // Reducido de 20 a 5 para acercarlo al título
+        marginBottom: 5,
         alignItems: 'flex-start'
     },
     dateLabel: {
         fontSize: 12,
-        color: '#9CA3AF',
         textTransform: 'uppercase',
-        marginBottom: 0 // Quitamos margen extra
+        marginBottom: 0
     },
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 16,
-        marginTop: 8 // Reducido de 12 a 8
+        marginTop: 8
     },
     sectionTitle: {
-        fontSize: 18, // Aumentado de 14 a 18
-        fontWeight: '800', // Más negrita
-        color: '#111827', // Color más oscuro (antes gris)
+        fontSize: 18,
+        fontWeight: '800',
         marginRight: 12,
         textTransform: 'uppercase'
     },
     line: {
         flex: 1,
-        height: 2, // Línea un poco más gruesa
-        backgroundColor: '#E5E7EB'
+        height: 2,
     },
     sectionContainer: {
         marginBottom: 12
     },
     chartCard: {
-        backgroundColor: 'white',
         borderRadius: 16,
         padding: 20,
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 4,
@@ -309,7 +321,6 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#1F2937',
         marginBottom: 16
     },
     statsContainer: {
@@ -322,7 +333,6 @@ const styles = StyleSheet.create({
     },
     statCard: {
         flex: 1,
-        backgroundColor: 'white',
         borderRadius: 16,
         padding: 16,
         flexDirection: 'row',
@@ -335,7 +345,6 @@ const styles = StyleSheet.create({
     },
     fullWidthCard: {
         borderWidth: 1,
-        borderColor: '#E5E7EB'
     },
     iconContainer: {
         width: 42,
@@ -351,12 +360,10 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#1F2937',
         marginBottom: 2
     },
     statTitle: {
         fontSize: 13,
-        color: '#6B7280',
         fontWeight: '500'
     }
 });

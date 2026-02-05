@@ -11,11 +11,11 @@ import {
 } from '../services/authService';
 import { useClients } from '../context/ClientContext';
 import { useAuth } from '../context/AuthContext';
+import { useThemeColors } from '../hooks/useThemeColors';
 
-// Mapa de relaciones manual por si falla la API
 const HARDCODED_SELLER_RELATIONS = {
-  'b8QWwNJYxAGr5gER': 'NZ9DezJWqMQOnRE3', // Karen
-  '5m2XOBMXzJ4NZkwr': 'lK20zbAk4JRDVEa1', // Paola
+  'b8QWwNJYxAGr5gER': 'NZ9DezJWqMQOnRE3', 
+  '5m2XOBMXzJ4NZkwr': 'lK20zbAk4JRDVEa1', 
 };
 
 export default function LoginScreen() {
@@ -33,6 +33,7 @@ export default function LoginScreen() {
   const { isBiometricSupported, biometricType, isChecking: isCheckingBiometrics, authenticate } = useBiometricAuth();
   const { loadInitialData, setUserProfile } = useClients();
   const { signIn } = useAuth();
+  const { colors, isDark } = useThemeColors();
 
   useEffect(() => {
     checkSavedUser();
@@ -45,7 +46,6 @@ export default function LoginScreen() {
         setSavedUser(user);
       }
     } catch (error) {
-      // Error silencioso
     } finally {
       setIsCheckingUser(false);
       Animated.timing(fadeAnim, {
@@ -70,7 +70,6 @@ export default function LoginScreen() {
 
     let finalSellerId = data.sellerId;
     
-    // Si no viene en la API, usamos el parche manual
     if (!finalSellerId && HARDCODED_SELLER_RELATIONS[id]) {
         finalSellerId = HARDCODED_SELLER_RELATIONS[id];
     }
@@ -93,17 +92,14 @@ export default function LoginScreen() {
       username: userToSave
     };
 
-    // Actualizamos el contexto de clientes
     setUserProfile(userData);
 
     if (rememberMe || savedUser) {
       await setUserInfo(userData);
     }
 
-    // Carga de datos inmediata para evitar Race Condition
     loadInitialData(userData);
 
-    // Iniciamos sesión en AuthContext
     await signIn(userData);
   };
 
@@ -192,11 +188,11 @@ export default function LoginScreen() {
       return (
          <Image 
            source={require('../assets/faceid_icon.png')} 
-           style={{ width: 50, height: 50, tintColor: '#2b5cb5', resizeMode: 'contain' }} 
+           style={{ width: 50, height: 50, tintColor: colors.primary, resizeMode: 'contain' }} 
          />
       );
     }
-    return <Ionicons name="finger-print" size={50} color="#2b5cb5" />;
+    return <Ionicons name="finger-print" size={50} color={colors.primary} />;
   };
 
   if (isCheckingUser) {
@@ -204,7 +200,10 @@ export default function LoginScreen() {
         <View style={styles.mainContainer}>
             <View style={styles.backgroundContainer}>
                 <Image 
-                  source={require('../assets/login_background.png')}
+                  source={isDark 
+                    ? require('../assets/dark_bg.png') 
+                    : require('../assets/login_background.png')
+                  }
                   style={{ width: '100%', height: '100%' }}
                   resizeMode="cover"
                 />
@@ -220,15 +219,21 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.middleSection}>
-            <Text style={styles.greetingLabel}>Hola de nuevo,</Text>
-            <Text style={styles.greetingName}>{savedUser.firstName || savedUser.name || 'Usuario'}</Text>
+            <Text style={[styles.greetingLabel, isDark && { color: colors.textSecondary }]}>Hola de nuevo,</Text>
+            <Text style={[styles.greetingName, isDark && { color: colors.text }]}>
+                {savedUser.firstName || savedUser.name || 'Usuario'}
+            </Text>
           </View>
 
           <View style={styles.bottomSection}>
             {!isCheckingBiometrics && isBiometricSupported && (
-              <TouchableOpacity style={styles.biometricIconBtn} onPress={handleBiometricLogin} disabled={isLoading}>
+              <TouchableOpacity 
+                style={[styles.biometricIconBtn, { backgroundColor: colors.card }]} 
+                onPress={handleBiometricLogin} 
+                disabled={isLoading}
+              >
                 {isLoading && !password ? (
-                  <ActivityIndicator size="large" color="#2b5cb5" />
+                  <ActivityIndicator size="large" color={colors.primary} />
                 ) : (
                   renderBiometricIcon()
                 )}
@@ -236,18 +241,18 @@ export default function LoginScreen() {
             )}
 
             <View style={styles.quickLoginContainer}>
-              <View style={styles.passwordInputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={{marginLeft: 10}} />
+              <View style={[styles.passwordInputWrapper, { backgroundColor: colors.card }]}>
+                <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={{marginLeft: 10}} />
                 <TextInput
-                  style={styles.quickPasswordInput}
+                  style={[styles.quickPasswordInput, { color: colors.text }]}
                   placeholder="Contraseña"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.textSecondary}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!isPasswordVisible}
                 />
                 <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)} style={{ padding: 10 }}>
-                  <Ionicons name={isPasswordVisible ? "eye-off" : "eye"} size={20} color="#9CA3AF" />
+                  <Ionicons name={isPasswordVisible ? "eye-off" : "eye"} size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
 
@@ -257,7 +262,7 @@ export default function LoginScreen() {
             </View>
 
             <TouchableOpacity style={styles.switchUserLink} onPress={handleSwitchAccount}>
-              <Text style={styles.switchUserText}>Cambiar usuario</Text>
+              <Text style={[styles.switchUserText, isDark && { color: colors.textSecondary }]}>Cambiar usuario</Text>
             </TouchableOpacity>
           </View>
     </KeyboardAvoidingView>
@@ -270,32 +275,35 @@ export default function LoginScreen() {
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[
+                  styles.input, 
+                  { backgroundColor: colors.card, color: colors.text }
+              ]}
               placeholder="Usuario"
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.textSecondary}
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
             />
-            <View style={styles.passwordContainer}>
+            <View style={[styles.passwordContainer, { backgroundColor: colors.card }]}>
               <TextInput
-                style={styles.passwordInputInternal}
+                style={[styles.passwordInputInternal, { color: colors.text }]}
                 placeholder="Contraseña"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textSecondary}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!isPasswordVisible}
               />
               <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
-                <Ionicons name={isPasswordVisible ? "eye-off" : "eye"} size={24} color="#999" />
+                <Ionicons name={isPasswordVisible ? "eye-off" : "eye"} size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.optionsRow}>
             <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRememberMe(!rememberMe)}>
-              <Ionicons name={rememberMe ? "checkbox" : "square-outline"} size={20} color="white" />
-              <Text style={styles.checkboxText}>Recordarme</Text>
+              <Ionicons name={rememberMe ? "checkbox" : "square-outline"} size={20} color={isDark ? colors.text : "white"} />
+              <Text style={[styles.checkboxText, isDark && { color: colors.text }]}>Recordarme</Text>
             </TouchableOpacity>
           </View>
 
@@ -309,11 +317,14 @@ export default function LoginScreen() {
   return (
     <View style={styles.mainContainer}>
       <View style={styles.backgroundContainer}>
-        <Image 
-            source={require('../assets/login_background.png')}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
-        />
+          <Image 
+              source={isDark 
+                ? require('../assets/dark_bg.png') 
+                : require('../assets/login_background.png')
+              }
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+          />
       </View>
       
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
@@ -331,8 +342,8 @@ const styles = StyleSheet.create({
   logoContainer: { alignItems: 'center', marginBottom: 40 },
   logoImage: { width: 150, height: 150, resizeMode: 'contain' },
   inputContainer: { marginBottom: 20 },
-  input: { backgroundColor: 'white', borderRadius: 12, paddingVertical: 15, paddingHorizontal: 20, fontSize: 16, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-  passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 12, paddingHorizontal: 20, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  input: { borderRadius: 12, paddingVertical: 15, paddingHorizontal: 20, fontSize: 16, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  passwordContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 20, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
   passwordInputInternal: { flex: 1, paddingVertical: 15, fontSize: 16 },
   optionsRow: { flexDirection: 'row', marginBottom: 40 },
   checkboxContainer: { flexDirection: 'row', alignItems: 'center' },
@@ -347,10 +358,10 @@ const styles = StyleSheet.create({
   greetingLabel: { fontSize: 20, color: 'white', fontWeight: '300', marginBottom: 5 },
   greetingName: { fontSize: 34, color: 'white', fontWeight: '800', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 3 },
   bottomSection: { width: '100%', alignItems: 'center' },
-  biometricIconBtn: { backgroundColor: 'white', width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 25, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
+  biometricIconBtn: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 25, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
   quickLoginContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, width: '100%', maxWidth: 320 },
-  passwordInputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 15, marginRight: 10, height: 55, paddingHorizontal: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-  quickPasswordInput: { flex: 1, height: '100%', paddingHorizontal: 10, fontSize: 16, color: '#374151' },
+  passwordInputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', borderRadius: 15, marginRight: 10, height: 55, paddingHorizontal: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  quickPasswordInput: { flex: 1, height: '100%', paddingHorizontal: 10, fontSize: 16 },
   quickLoginBtn: { backgroundColor: '#6FCF97', width: 55, height: 55, borderRadius: 15, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
   switchUserLink: { padding: 10, marginTop: 5 },
   switchUserText: { color: 'white', fontSize: 15, fontWeight: '600', textDecorationLine: 'underline', opacity: 0.9 },

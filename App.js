@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
 import { View, Platform, LogBox } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-
-// 1. LIBRERÍA NATIVA (Para iOS - Liquid Glass & SF Symbols)
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
-
-// 2. LIBRERÍA ESTÁNDAR (Para Android - Estable y visible)
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-
-// Iconos Vectoriales
 import MaterialIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import LoginScreen from './src/screens/LoginScreen';
@@ -27,25 +21,24 @@ import Header from './src/components/Header';
 import AnimatedSplashScreen from './src/screens/AnimatedSplashScreen'; 
 import { ClientProvider } from './src/context/ClientContext'; 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { useThemeColors } from './src/hooks/useThemeColors';
 
 LogBox.ignoreLogs(['setLayoutAnimationEnabledExperimental']);
 
 const Stack = createNativeStackNavigator();
 
-// --- DEFINICIÓN DE LOS DOS NAVIGATORS ---
-const NativeTab = createNativeBottomTabNavigator(); // iOS
-const StandardTab = createBottomTabNavigator();     // Android
+const NativeTab = createNativeBottomTabNavigator(); 
+const StandardTab = createBottomTabNavigator();     
 
-// =====================================================================
-// CONFIGURACIÓN IOS (Nativa - SF Symbols - Translucent)
-// =====================================================================
 function IOSTabs() {
+  const { colors } = useThemeColors();
+
   return (
     <NativeTab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2b5cb5',
-        translucent: true, // Efecto cristal nativo
+        tabBarActiveTintColor: colors.primary,
+        translucent: true, 
         tabBarStyle: {
           position: 'absolute',
           bottom: 0,
@@ -96,16 +89,15 @@ function IOSTabs() {
   );
 }
 
-// =====================================================================
-// CONFIGURACIÓN ANDROID (Estándar - Material Icons - 100% Visible)
-// =====================================================================
 function AndroidTabs() {
+  const { colors } = useThemeColors();
+
   return (
     <StandardTab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: '#2b5cb5',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
@@ -115,11 +107,10 @@ function AndroidTabs() {
           height: 80,
           paddingBottom: 20,
           paddingTop: 8,
-          backgroundColor: '#ffffff',
+          backgroundColor: colors.tabBar,
           borderTopWidth: 0,
           elevation: 0, 
         },
-        // Aquí usamos componentes directos, sin imágenes ni trucos raros
         tabBarIcon: ({ color, size }) => {
           let iconName;
           if (route.name === 'Home') iconName = 'clock-outline';
@@ -141,14 +132,10 @@ function AndroidTabs() {
   );
 }
 
-// =====================================================================
-// COMPONENTE PRINCIPAL (Selector)
-// =====================================================================
 function MainTabs({ navigation }) {
   return (
     <View style={{ flex: 1 }}>
       <Header navigation={navigation} />
-      {/* El Switch Maestro: iOS usa uno, Android usa el otro */}
       {Platform.OS === 'ios' ? <IOSTabs /> : <AndroidTabs />}
     </View>
   );
@@ -157,14 +144,15 @@ function MainTabs({ navigation }) {
 function AppNavigation() {
   const { isLoading, isAuthenticated } = useAuth();
   const [isSplashFinished, setIsSplashFinished] = useState(false);
+  const { isDark } = useThemeColors();
 
   if (isLoading || !isSplashFinished) {
     return <AnimatedSplashScreen onFinish={() => setIsSplashFinished(true)} />;
   }
 
   return (
-    <NavigationContainer>
-      <StatusBar style="light" backgroundColor="transparent" translucent={true} />
+    <NavigationContainer theme={isDark ? DarkTheme : DefaultTheme}>
+      <StatusBar style="auto" backgroundColor="transparent" translucent={true} />
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'default' }}>
         {isAuthenticated ? (
           <>

@@ -6,20 +6,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { SELLER_OPTIONS } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 import { PERMISSIONS, hasPermission } from '../utils/permissions';
+import { useThemeColors } from '../hooks/useThemeColors';
 
-// --- MAPA DE TRADUCCIÓN (ID Visual -> ID Real) ---
 const SELLER_ID_MAP = {
-  1: 'lK20zbAk4JRDVEa1', // Ana Paola
-  2: 'NZ9DezJWqMQOnRE3', // Karen
+  1: 'lK20zbAk4JRDVEa1', 
+  2: 'NZ9DezJWqMQOnRE3', 
 };
 
-// Componente para opciones del Modal
-const ModalOption = ({ label, isActive, onPress, icon, isSecondary }) => (
+const ModalOption = ({ label, isActive, onPress, icon, isSecondary, colors }) => (
   <TouchableOpacity 
     style={[
         styles.modalOption, 
-        isActive && styles.modalOptionActive,
-        isSecondary && { marginLeft: 10 } // Indentación visual para sub-opciones
+        isActive && { backgroundColor: colors.isDark ? 'rgba(43, 92, 181, 0.15)' : '#EFF6FF' },
+        isSecondary && { marginLeft: 10 } 
     ]} 
     onPress={onPress}
   >
@@ -27,14 +26,18 @@ const ModalOption = ({ label, isActive, onPress, icon, isSecondary }) => (
         <Ionicons 
             name={icon} 
             size={20} 
-            color={isActive ? "#2b5cb5" : "#6B7280"} 
+            color={isActive ? colors.primary : colors.textSecondary} 
             style={{ marginRight: 12 }} 
         />
-        <Text style={[styles.modalOptionText, isActive && styles.modalOptionTextActive]}>
+        <Text style={[
+            styles.modalOptionText, 
+            { color: colors.text },
+            isActive && { color: colors.primary, fontWeight: '600' }
+        ]}>
             {label}
         </Text>
     </View>
-    {isActive && <Ionicons name="checkmark-circle" size={20} color="#2b5cb5" />}
+    {isActive && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
   </TouchableOpacity>
 );
 
@@ -47,14 +50,13 @@ export default function ClientFilterHeader({
 }) {
   const [showModal, setShowModal] = useState(false); 
   const { userProfile } = useAuth();
+  const { colors, isDark } = useThemeColors();
 
-  // Validamos permiso (Solo Admins ven la sección de vendedores)
   const canViewAll = useMemo(() => {
     if (!userProfile) return false;
     return hasPermission(userProfile.roleId, PERMISSIONS.VIEW_ALL_CLIENTS);
   }, [userProfile]);
 
-  // LOGICA DE TRADUCCIÓN DE ID
   const handleSellerSelect = (uiId) => {
     const realId = uiId ? SELLER_ID_MAP[uiId] : undefined;
     onApplyFilter(undefined, undefined, realId); 
@@ -66,42 +68,36 @@ export default function ClientFilterHeader({
     setShowModal(false);
   };
 
-  // Verificamos selección visual
   const isOptionSelected = (optionId) => {
       if (!filters.sellerId && !optionId) return true;
       return SELLER_ID_MAP[optionId] === filters.sellerId;
   };
 
-  // Detectar si hay filtro de vendedor activo para pintar el icono de azul
   const hasActiveSellerFilter = !!filters.sellerId;
 
   return (
     <View style={styles.container}>
       
-      {/* --- BARRA UNIFICADA (Buscador + Botón Filtros) --- */}
-      <View style={styles.searchBarContainer}>
-        <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+      <View style={[styles.searchBarContainer, { backgroundColor: colors.card }]}>
+        <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
         
         <TextInput 
-            style={styles.searchInput} 
+            style={[styles.searchInput, { color: colors.text }]} 
             placeholder="Buscar cliente..." 
-            placeholderTextColor="#9ca3af" 
+            placeholderTextColor={colors.textSecondary} 
             value={searchQuery} 
             onChangeText={onSearchChange} 
             autoCapitalize="none"
         />
 
-        {/* Botón limpiar búsqueda */}
         {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => onSearchChange('')} style={styles.clearBtn}>
-                <Ionicons name="close-circle" size={18} color="#9ca3af" />
+                <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
         )}
 
-        {/* Divisor Vertical */}
-        <View style={styles.verticalDivider} />
+        <View style={[styles.verticalDivider, { backgroundColor: colors.border }]} />
 
-        {/* Botón Universal de Filtros */}
         <TouchableOpacity 
             style={styles.filterIconButton} 
             onPress={() => setShowModal(true)}
@@ -109,13 +105,11 @@ export default function ClientFilterHeader({
             <Ionicons 
                 name={hasActiveSellerFilter ? "options" : "options-outline"} 
                 size={22} 
-                color={hasActiveSellerFilter ? "#2b5cb5" : "#4B5563"} 
+                color={hasActiveSellerFilter ? colors.primary : colors.textSecondary} 
             />
         </TouchableOpacity>
       </View>
 
-
-      {/* --- MODAL UNIVERSAL --- */}
       <Modal 
         visible={showModal} 
         transparent 
@@ -127,42 +121,43 @@ export default function ClientFilterHeader({
             activeOpacity={1} 
             onPress={() => setShowModal(false)}
         >
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
                 <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Configuración de Lista</Text>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>Configuración de Lista</Text>
                     <TouchableOpacity onPress={() => setShowModal(false)}>
-                        <Ionicons name="close" size={24} color="#6B7280" />
+                        <Ionicons name="close" size={24} color={colors.textSecondary} />
                     </TouchableOpacity>
                 </View>
 
                 <ScrollView showsVerticalScrollIndicator={false}>
                     
-                    {/* SECCIÓN 1: ORDENAR (Visible para todos) */}
-                    <Text style={styles.sectionHeader}>ORDENAR POR</Text>
+                    <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>ORDENAR POR</Text>
                     <ModalOption 
                         label="Alfabético (A-Z)" 
                         icon="text-outline"
                         isActive={filters.sortParam === 'BusinessName'} 
-                        onPress={() => handleSortSelect('BusinessName', false)} 
+                        onPress={() => handleSortSelect('BusinessName', false)}
+                        colors={{...colors, isDark}} 
                     />
                     <ModalOption 
                         label="Por Vencer / Recientes" 
                         icon="time-outline"
                         isActive={filters.sortParam !== 'BusinessName'} 
-                        onPress={() => handleSortSelect('TrialEndsAt', false)} 
+                        onPress={() => handleSortSelect('TrialEndsAt', false)}
+                        colors={{...colors, isDark}} 
                     />
 
-                    {/* SECCIÓN 2: VENDEDORES (Solo visible si tienes permiso) */}
                     {canViewAll && (
                         <>
-                            <View style={styles.sectionDivider} />
-                            <Text style={styles.sectionHeader}>FILTRAR POR VENDEDOR</Text>
+                            <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
+                            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>FILTRAR POR VENDEDOR</Text>
                             
                             <ModalOption 
                                 label="Ver Todos" 
                                 icon="people-outline"
                                 isActive={!filters.sellerId} 
-                                onPress={() => handleSellerSelect(null)} 
+                                onPress={() => handleSellerSelect(null)}
+                                colors={{...colors, isDark}} 
                             />
                             
                             {SELLER_OPTIONS.map(seller => (
@@ -172,6 +167,7 @@ export default function ClientFilterHeader({
                                     icon="person-outline"
                                     isActive={isOptionSelected(seller.id)} 
                                     onPress={() => handleSellerSelect(seller.id)}
+                                    colors={{...colors, isDark}}
                                 />
                             ))}
                         </>
@@ -194,9 +190,8 @@ const styles = StyleSheet.create({
   searchBarContainer: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    backgroundColor: 'white', 
     paddingHorizontal: 15, 
-    height: 50, // Altura fija para consistencia
+    height: 50, 
     borderRadius: 12, 
     shadowColor: '#000', 
     shadowOffset: { width: 0, height: 2 }, 
@@ -205,13 +200,12 @@ const styles = StyleSheet.create({
     elevation: 2 
   },
   searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, fontSize: 16, color: '#374151', height: '100%' },
+  searchInput: { flex: 1, fontSize: 16, height: '100%' },
   clearBtn: { padding: 5, marginRight: 5 },
   
   verticalDivider: {
     width: 1,
     height: '60%',
-    backgroundColor: '#E5E7EB',
     marginHorizontal: 10
   },
   
@@ -221,15 +215,13 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
 
-  // Estilos del Modal
   modalOverlay: { 
     flex: 1, 
     backgroundColor: 'rgba(0,0,0,0.5)', 
-    justifyContent: 'flex-end', // Modal tipo "Bottom Sheet" (o center si prefieres)
+    justifyContent: 'flex-end', 
     padding: 0 
   },
   modalContent: { 
-    backgroundColor: 'white', 
     borderTopLeftRadius: 20, 
     borderTopRightRadius: 20, 
     padding: 20, 
@@ -243,19 +235,17 @@ const styles = StyleSheet.create({
       alignItems: 'center',
       marginBottom: 20
   },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold' },
   
   sectionHeader: {
       fontSize: 12,
       fontWeight: '700',
-      color: '#9CA3AF',
       marginBottom: 10,
       marginTop: 5,
       letterSpacing: 0.5
   },
   sectionDivider: {
       height: 1,
-      backgroundColor: '#F3F4F6',
       marginVertical: 15
   },
 
@@ -268,7 +258,5 @@ const styles = StyleSheet.create({
       borderRadius: 10,
       marginBottom: 5
   },
-  modalOptionActive: { backgroundColor: '#EFF6FF' },
-  modalOptionText: { fontSize: 16, color: '#374151' },
-  modalOptionTextActive: { color: '#2b5cb5', fontWeight: '600' },
+  modalOptionText: { fontSize: 16 },
 });

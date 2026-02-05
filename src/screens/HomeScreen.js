@@ -7,13 +7,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { useClients } from '../context/ClientContext';
 import ClientFilterHeader from '../components/ClientFilterHeader';
 import ClientCard from '../components/cards/ClientCard';
-import { COLORS } from '../utils/colors';
+
+// 1. ELIMINAMOS EL IMPORT ESTÁTICO DE COLORS
+// import { COLORS } from '../utils/colors'; 
+
+// 2. IMPORTAMOS NUESTRO HOOK MÁGICO
+import { useThemeColors } from '../hooks/useThemeColors';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 export default function HomeScreen() { 
+  // 3. OBTENEMOS LOS COLORES DEL TEMA ACTUAL
+  const { colors, isDark } = useThemeColors();
+  
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -73,7 +81,8 @@ export default function HomeScreen() {
   const isReady = controlsHeight > 0;
 
   return (
-    <View style={styles.container}>
+    // 4. APLICAMOS EL COLOR DE FONDO DINÁMICO
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       
       <Animated.View 
         style={[
@@ -81,7 +90,10 @@ export default function HomeScreen() {
             { 
                 top: 0, 
                 transform: [{ translateY }],
-                opacity: isReady ? 1 : 0 
+                opacity: isReady ? 1 : 0,
+                // 5. FONDO DEL ENCABEZADO DINÁMICO
+                // Importante para que al scrollear no se vea transparente sobre el texto
+                backgroundColor: colors.background 
             }
         ]}
         onLayout={(e) => setControlsHeight(e.nativeEvent.layout.height)}
@@ -126,25 +138,33 @@ export default function HomeScreen() {
             onEndReached={fetchDemos} 
             onEndReachedThreshold={0.5} 
             onRefresh={refreshDemos}
+            // 6. CONTROLAMOS EL SPINNER DE REFRESH CON LOS COLORES NUEVOS
             refreshing={loadingDemos && demos.length === 0} 
+            progressBackgroundColor={colors.card} // Fondo del círculo de carga en Android
+            colors={[colors.primary]} // Color de la flecha de carga en Android
+            tintColor={colors.primary} // Color en iOS
             
             ListFooterComponent={ 
                 loadingDemos && demos.length > 0 && hasMoreDemos 
-                ? <View style={{ padding: 20 }}><ActivityIndicator size="small" color={COLORS.primary} /></View> 
+                ? <View style={{ padding: 20 }}><ActivityIndicator size="small" color={colors.primary} /></View> 
                 : null 
             }
             ListEmptyComponent={ 
                 !loadingDemos && (
                     <View style={styles.emptyContainer}>
-                        <Ionicons name="folder-open-outline" size={48} color={COLORS.border} />
-                        <Text style={styles.emptyText}>No hay demos disponibles</Text>
+                        {/* 7. ICONOS Y TEXTOS VACÍOS DINÁMICOS */}
+                        <Ionicons name="folder-open-outline" size={48} color={colors.textSecondary} />
+                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                            No hay demos disponibles
+                        </Text>
                     </View>
                 ) 
             }
           />
       ) : (
-          <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
+          // 8. OVERLAY DE CARGA INICIAL
+          <View style={[styles.loadingOverlay, { backgroundColor: colors.background }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
           </View>
       )}
     </View>
@@ -152,23 +172,33 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  // 9. LIMPIEZA DE ESTILOS
+  // Quitamos backgroundColor de aquí porque ahora se inyecta dinámicamente en el componente
+  container: { 
+    flex: 1, 
+    // backgroundColor: COLORS.background <-- BORRADO
+  },
   
   collapsibleWrapper: {
     position: 'absolute',
     left: 0, right: 0,
     zIndex: 50,
     elevation: 5,
-    backgroundColor: COLORS.background,
+    // backgroundColor: COLORS.background, <-- BORRADO
     paddingTop: 10,
   },
 
   emptyContainer: { alignItems: 'center', marginTop: 80 },
-  emptyText: { marginTop: 10, color: COLORS.textSecondary, fontSize: 15 },
+  
+  emptyText: { 
+    marginTop: 10, 
+    fontSize: 15 
+    // color: COLORS.textSecondary, <-- BORRADO (Movido a inline style)
+  },
   
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.background,
+    // backgroundColor: COLORS.background, <-- BORRADO
     zIndex: 999,
     justifyContent: 'center',
     alignItems: 'center'

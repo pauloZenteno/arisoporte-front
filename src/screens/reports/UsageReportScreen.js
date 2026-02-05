@@ -7,25 +7,26 @@ import {
     TouchableOpacity, 
     ActivityIndicator, 
     TextInput, 
-    Platform, 
     StatusBar 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getClientsUsageReport } from '../../services/reportService';
 import { openWhatsApp } from '../../utils/actions';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
-const ClientUsageRow = React.memo(({ item, onContact }) => {
+const ClientUsageRow = React.memo(({ item, onContact, colors, isDark }) => {
     
-    let badgeStyle = styles.badgeSuccess;
-    let textStyle = styles.textSuccess;
+    let badgeBg = isDark ? 'rgba(5, 150, 105, 0.15)' : '#ECFDF5';
+    let badgeText = '#059669';
     
     if (item.daysWithoutUse > 30) {
-        badgeStyle = styles.badgeDanger;
-        textStyle = styles.textDanger;
+        badgeBg = isDark ? 'rgba(220, 38, 38, 0.15)' : '#FEF2F2';
+        badgeText = '#DC2626';
     } else if (item.daysWithoutUse > 7) {
-        badgeStyle = styles.badgeWarning;
-        textStyle = styles.textWarning;
+        badgeBg = isDark ? 'rgba(217, 119, 6, 0.15)' : '#FFFBEB';
+        badgeText = '#D97706';
     }
 
     const businessName = item.businessName || item.name || 'Sin Nombre';
@@ -33,22 +34,22 @@ const ClientUsageRow = React.memo(({ item, onContact }) => {
     const days = item.daysWithoutUse || 0;
 
     return (
-        <View style={styles.cardRow}>
+        <View style={[styles.cardRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.infoLeftContainer}>
                 <View style={styles.nameTagHeader}>
-                    <Text style={styles.businessName} numberOfLines={1} ellipsizeMode="tail">
+                    <Text style={[styles.businessName, { color: colors.text }]} numberOfLines={1} ellipsizeMode="tail">
                         {businessName}
                     </Text>
                     {item.isTrial === true && (
-                        <View style={styles.demoTag}>
-                            <Text style={styles.demoText}>DEMO</Text>
+                        <View style={[styles.demoTag, { backgroundColor: isDark ? 'rgba(96, 165, 250, 0.15)' : '#EFF6FF' }]}>
+                            <Text style={[styles.demoText, { color: colors.primary }]}>DEMO</Text>
                         </View>
                     )}
                 </View>
                 
                 <View style={styles.adminRow}>
-                    <Ionicons name="person-circle-outline" size={14} color="#9CA3AF" />
-                    <Text style={styles.adminName} numberOfLines={1}>
+                    <Ionicons name="person-circle-outline" size={14} color={colors.textSecondary} />
+                    <Text style={[styles.adminName, { color: colors.textSecondary }]} numberOfLines={1}>
                         {adminName}
                     </Text>
                 </View>
@@ -56,12 +57,12 @@ const ClientUsageRow = React.memo(({ item, onContact }) => {
 
             <View style={styles.infoRightContainer}>
                 <View style={styles.statsBlock}>
-                    <View style={[styles.badge, badgeStyle]}>
-                        <Text style={[styles.daysText, textStyle]}>
+                    <View style={[styles.badge, { backgroundColor: badgeBg }]}>
+                        <Text style={[styles.daysText, { color: badgeText }]}>
                             {days} días
                         </Text>
                     </View>
-                    <Text style={styles.labelTiny}>sin uso</Text>
+                    <Text style={[styles.labelTiny, { color: colors.textSecondary }]}>sin uso</Text>
                 </View>
 
                 <TouchableOpacity 
@@ -69,7 +70,7 @@ const ClientUsageRow = React.memo(({ item, onContact }) => {
                     onPress={() => onContact(item.phoneNumber, adminName)}
                     activeOpacity={0.8}
                 >
-                    <Ionicons name="logo-whatsapp" size={20} color="white" />
+                    <Ionicons name="logo-whatsapp" size={18} color="white" />
                 </TouchableOpacity>
             </View>
         </View>
@@ -78,6 +79,9 @@ const ClientUsageRow = React.memo(({ item, onContact }) => {
 
 export default function UsageReportScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const { colors, isDark } = useThemeColors();
+  
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,9 +141,20 @@ export default function UsageReportScreen() {
       return (
           <TouchableOpacity 
               onPress={() => setTypeFilter(value)} 
-              style={[styles.filterTab, isActive && styles.filterTabActive]}
+              style={[
+                  styles.filterTab, 
+                  { 
+                      backgroundColor: isDark ? colors.background : '#F3F4F6', 
+                      borderColor: isActive ? colors.primary : 'transparent' 
+                  },
+                  isActive && { backgroundColor: isDark ? 'rgba(96, 165, 250, 0.15)' : '#EFF6FF' }
+              ]}
           >
-              <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
+              <Text style={[
+                  styles.filterTabText, 
+                  { color: colors.textSecondary },
+                  isActive && { color: colors.primary, fontWeight: '700' }
+              ]}>
                   {label}
               </Text>
           </TouchableOpacity>
@@ -147,61 +162,73 @@ export default function UsageReportScreen() {
   };
 
   return (
-    <View style={styles.container}>
-        <View style={styles.customHeader}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.card} />
+        
+        <View style={[
+            styles.customHeader, 
+            { 
+                paddingTop: insets.top + 10, 
+                backgroundColor: colors.card, 
+                borderBottomColor: colors.border 
+            }
+        ]}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                <Ionicons name="chevron-back" size={24} color="#111827" />
+                <Ionicons name="chevron-back" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Reporte de Inactividad</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Reporte de Inactividad</Text>
             <View style={styles.headerRightPlaceholder} />
         </View>
 
-        <View style={styles.filterContainer}>
-            <View style={styles.searchBar}>
-                <Ionicons name="search" size={18} color="#9CA3AF" style={{marginRight: 8}} />
+        <View style={[styles.filterContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            <View style={[styles.searchBar, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
+                <Ionicons name="search" size={18} color={colors.textSecondary} style={{marginRight: 8}} />
                 <TextInput 
-                    style={styles.input}
+                    style={[styles.input, { color: colors.text }]}
                     placeholder="Buscar..."
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textSecondary}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     returnKeyType="search"
                 />
                 {searchQuery.length > 0 && (
                     <TouchableOpacity onPress={() => setSearchQuery('')}>
-                        <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+                        <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
                     </TouchableOpacity>
                 )}
             </View>
 
-            <TouchableOpacity style={styles.sortButton} onPress={toggleSort}>
-                <Text style={styles.sortText}>
+            <TouchableOpacity 
+                style={[styles.sortButton, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: colors.border }]} 
+                onPress={toggleSort}
+            >
+                <Text style={[styles.sortText, { color: colors.textSecondary }]}>
                     {sortOrder === 'desc' ? 'Más inactivos' : 'Menos inactivos'}
                 </Text>
                 <Ionicons 
                     name={sortOrder === 'desc' ? "arrow-down" : "arrow-up"} 
                     size={14} 
-                    color="#4B5563" 
+                    color={colors.textSecondary} 
                     style={{marginLeft: 4}}
                 />
             </TouchableOpacity>
         </View>
 
-        <View style={styles.tabsContainer}>
+        <View style={[styles.tabsContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
             <FilterTab label="Todos" value="all" />
             <FilterTab label="Clientes" value="clients" />
             <FilterTab label="Demos" value="demos" />
         </View>
 
         {loading ? (
-            <View style={styles.center}>
-                <ActivityIndicator size="large" color="#2b5cb5" />
+            <View style={[styles.center, { backgroundColor: colors.background }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
             </View>
         ) : (
             <FlatList
                 data={filteredData}
                 keyExtractor={(item) => item.clientId || Math.random().toString()}
-                renderItem={({ item }) => <ClientUsageRow item={item} onContact={handleContact} />}
+                renderItem={({ item }) => <ClientUsageRow item={item} onContact={handleContact} colors={colors} isDark={isDark} />}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
                 initialNumToRender={10}
@@ -210,7 +237,7 @@ export default function UsageReportScreen() {
                 removeClippedSubviews={true}
                 ListEmptyComponent={
                     <View style={styles.center}>
-                        <Text style={styles.emptyText}>No se encontraron resultados.</Text>
+                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No se encontraron resultados.</Text>
                     </View>
                 }
             />
@@ -222,7 +249,6 @@ export default function UsageReportScreen() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#F9FAFB' 
   },
   center: { 
     flex: 1, 
@@ -236,19 +262,15 @@ const styles = StyleSheet.create({
       justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingBottom: 12,
-      backgroundColor: 'white',
       borderBottomWidth: 1,
-      borderBottomColor: '#F3F4F6',
-      paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 30) + 10 : 65 
   },
   backButton: { paddingRight: 16 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
+  headerTitle: { fontSize: 17, fontWeight: '700' },
   headerRightPlaceholder: { width: 40 },
 
   filterContainer: {
     padding: 12,
     paddingBottom: 8,
-    backgroundColor: 'white',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10
@@ -256,54 +278,38 @@ const styles = StyleSheet.create({
   searchBar: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    height: 36,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 40,
     alignItems: 'center'
   },
-  input: { flex: 1, fontSize: 14, color: '#1F2937', height: '100%', paddingVertical: 0 },
+  input: { flex: 1, fontSize: 14, height: '100%', paddingVertical: 0 },
   sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB'
   },
-  sortText: { fontSize: 12, fontWeight: '600', color: '#4B5563' },
+  sortText: { fontSize: 12, fontWeight: '600' },
 
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 12,
     paddingBottom: 12,
-    backgroundColor: 'white',
     gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB'
   },
   filterTab: {
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
     borderWidth: 1,
-    borderColor: 'transparent'
-  },
-  filterTabActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#2b5cb5'
   },
   filterTabText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#6B7280'
-  },
-  filterTabTextActive: {
-    color: '#2b5cb5',
-    fontWeight: '700'
   },
 
   listContent: { padding: 16, paddingBottom: 40 },
@@ -311,19 +317,17 @@ const styles = StyleSheet.create({
   cardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 10,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
     elevation: 1,
     borderWidth: 1,
-    borderColor: '#F3F4F6'
   },
 
   infoLeftContainer: { 
@@ -338,20 +342,18 @@ const styles = StyleSheet.create({
   businessName: { 
       fontSize: 15, 
       fontWeight: '700', 
-      color: '#111827',
       flexShrink: 1 
   },
   demoTag: { 
-      backgroundColor: '#EFF6FF', 
       paddingHorizontal: 6, 
       paddingVertical: 2, 
       borderRadius: 4,
       marginLeft: 8 
   },
-  demoText: { fontSize: 10, fontWeight: '700', color: '#2b5cb5' },
+  demoText: { fontSize: 10, fontWeight: '700' },
   
   adminRow: { flexDirection: 'row', alignItems: 'center' },
-  adminName: { fontSize: 13, color: '#6B7280', marginLeft: 4 },
+  adminName: { fontSize: 13, marginLeft: 4 },
   
   infoRightContainer: {
       flexDirection: 'row',
@@ -363,28 +365,23 @@ const styles = StyleSheet.create({
       minWidth: 65
   },
 
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginBottom: 2 },
-  badgeSuccess: { backgroundColor: '#ECFDF5' },
-  textSuccess: { color: '#059669', fontSize: 11, fontWeight: '700' },
-  badgeWarning: { backgroundColor: '#FFFBEB' },
-  textWarning: { color: '#D97706', fontSize: 11, fontWeight: '700' },
-  badgeDanger: { backgroundColor: '#FEF2F2' },
-  textDanger: { color: '#DC2626', fontSize: 11, fontWeight: '700' },
-  labelTiny: { fontSize: 9, color: '#9CA3AF', fontWeight: '500', textTransform: 'uppercase' },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginBottom: 2 },
+  daysText: { fontSize: 11, fontWeight: '700' },
+  labelTiny: { fontSize: 9, fontWeight: '500', textTransform: 'uppercase' },
 
   actionBtn: {
     backgroundColor: '#25D366',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#25D366',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 2
   },
 
-  emptyText: { color: '#9CA3AF' }
+  emptyText: { marginTop: 10 }
 });
