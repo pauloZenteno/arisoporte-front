@@ -12,14 +12,12 @@ export const COLORS = {
 };
 
 const DARK_COLORS = {
-  // CAMBIO CLAVE: Usamos un azul más claro/brillante para que el texto se lea
-  primary: '#60A5FA', // Azul claro brillante (tipo neón suave)
-  
-  background: '#0F172A', // Tu fondo azul marino profundo
-  text: '#F9FAFB',       // Texto casi blanco
-  textSecondary: '#9CA3AF', // Texto gris claro para subtítulos
-  white: '#1E293B',      // Fondo de las tarjetas
-  border: '#334155',     // Bordes un poco más claros que el fondo
+  primary: '#60A5FA',
+  background: '#0F172A',
+  text: '#F9FAFB',
+  textSecondary: '#9CA3AF',
+  white: '#1E293B',
+  border: '#334155',    
   success: '#34D399',
   danger: '#F87171',
   card: '#1E293B',

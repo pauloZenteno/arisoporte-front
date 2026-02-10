@@ -22,16 +22,18 @@ import AnimatedSplashScreen from './src/screens/AnimatedSplashScreen';
 import { ClientProvider } from './src/context/ClientContext'; 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { useThemeColors } from './src/hooks/useThemeColors';
+import { hasPermission, PERMISSIONS } from './src/utils/permissions';
 
 LogBox.ignoreLogs(['setLayoutAnimationEnabledExperimental']);
 
 const Stack = createNativeStackNavigator();
-
 const NativeTab = createNativeBottomTabNavigator(); 
 const StandardTab = createBottomTabNavigator();     
 
 function IOSTabs() {
   const { colors } = useThemeColors();
+  const { user } = useAuth();
+  const canViewQuoter = hasPermission(user?.roleId, PERMISSIONS.VIEW_QUOTER);
 
   return (
     <NativeTab.Navigator
@@ -61,14 +63,16 @@ function IOSTabs() {
           tabBarIcon: () => ({ sfSymbol: 'person.2.fill' }),
         }} 
       />
-      <NativeTab.Screen 
-        name="Cotizador" 
-        component={CotizadorScreen} 
-        options={{ 
-          tabBarLabel: 'Cotizar',
-          tabBarIcon: () => ({ sfSymbol: 'doc.text.fill' }),
-        }} 
-      />
+      {canViewQuoter && (
+        <NativeTab.Screen 
+          name="Cotizador" 
+          component={CotizadorScreen} 
+          options={{ 
+            tabBarLabel: 'Cotizar',
+            tabBarIcon: () => ({ sfSymbol: 'doc.text.fill' }),
+          }} 
+        />
+      )}
       <NativeTab.Screen 
         name="Reportes" 
         component={ReportsScreen} 
@@ -91,6 +95,8 @@ function IOSTabs() {
 
 function AndroidTabs() {
   const { colors } = useThemeColors();
+  const { user } = useAuth();
+  const canViewQuoter = hasPermission(user?.roleId, PERMISSIONS.VIEW_QUOTER);
 
   return (
     <StandardTab.Navigator
@@ -125,7 +131,9 @@ function AndroidTabs() {
     >
       <StandardTab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Demos' }} />
       <StandardTab.Screen name="Clients" component={ClientsScreen} options={{ tabBarLabel: 'Clientes' }} />
-      <StandardTab.Screen name="Cotizador" component={CotizadorScreen} options={{ tabBarLabel: 'Cotizar' }} />
+      {canViewQuoter && (
+        <StandardTab.Screen name="Cotizador" component={CotizadorScreen} options={{ tabBarLabel: 'Cotizar' }} />
+      )}
       <StandardTab.Screen name="Reportes" component={ReportsScreen} options={{ tabBarLabel: 'Reportes' }} />
       <StandardTab.Screen name="Settings" component={SettingsScreen} options={{ tabBarLabel: 'Ajustes' }} />
     </StandardTab.Navigator>
