@@ -2,6 +2,7 @@ import api from './api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Alert } from 'react-native';
+import { INITIAL_MODULES, HARDCODED_PRODUCTS } from '../utils/quoteConstants';
 
 const arrayBufferToBase64 = (buffer) => {
   let binary = '';
@@ -13,15 +14,14 @@ const arrayBufferToBase64 = (buffer) => {
   return window.btoa(binary);
 };
 
-// MODIFICADO: Ahora acepta sortParam e isDescending
 export const getQuotes = async (pageNumber = 1, pageSize = 10, sortParam = 'CreatedAt', isDescending = true) => {
   try {
     const response = await api.get('/administration/QuoteManagement', {
       params: { 
         pageNumber, 
         pageSize,
-        sortParam,      // <--- Agregado
-        isDescending    // <--- Agregado
+        sortParam,
+        isDescending
       }
     });
     return response.data;
@@ -86,7 +86,36 @@ export const downloadQuote = async (id) => {
 
 export const downloadQuotePdf = async (quoteData) => {
   try {
-    const response = await api.post('/administration/ProductPriceScheme/downloadQuote', quoteData, {
+    // LIMPIEZA Y ENRIQUECIMIENTO DE DATOS
+    const cleanData = {
+        ...quoteData,
+        moduleDetails: quoteData.moduleDetails
+            ? quoteData.moduleDetails
+                .filter(m => m.isActive && Number(m.employeeNumber) > 0)
+                .map(m => {
+                    // Si el nombre viene null, lo buscamos en las constantes por su moduleId
+                    const localModule = INITIAL_MODULES.find(im => im.moduleId === m.moduleId);
+                    return {
+                        ...m,
+                        name: m.name || (localModule ? localModule.name : 'Sin Nombre')
+                    };
+                })
+            : [],
+        productDetails: quoteData.productDetails
+            ? quoteData.productDetails
+                .filter(p => p.isActive && Number(p.quantity) > 0)
+                .map(p => {
+                    // Si el nombre viene null, lo buscamos en las constantes por su productId
+                    const localProduct = HARDCODED_PRODUCTS.find(hp => hp.id === p.productId);
+                    return {
+                        ...p,
+                        name: p.name || (localProduct ? localProduct.name : 'Sin Nombre')
+                    };
+                })
+            : []
+    };
+
+    const response = await api.post('/administration/ProductPriceScheme/downloadQuote', cleanData, {
       responseType: 'arraybuffer'
     });
 
@@ -104,7 +133,12 @@ export const downloadQuotePdf = async (quoteData) => {
       return;
     }
 
-    await Sharing.shareAsync(fileUri);
+    // Sin await para evitar bloqueo de UI si el usuario cancela
+    Sharing.shareAsync(fileUri).catch(error => {
+        console.log("El usuario cerró el menú o hubo un error al compartir:", error);
+    });
+
+    return true;
   } catch (error) {
     throw error;
   }

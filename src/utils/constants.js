@@ -17,6 +17,13 @@ export const SELLER_MAP = {
   2: 'Karen Giffard'
 };
 
+// --- NUEVO: Mapa de teléfonos por ID de vendedor ---
+export const SELLER_PHONES = {
+  'b8QWwNJYxAGr5gER': '9992716915', // Karen
+  '5m2XOBMXzJ4NZkwr': '9992425792', // Paola 
+  // Agrega otros IDs si es necesario
+};
+
 export const SELLER_OPTIONS = [
   { id: 1, name: 'Ana Paola Valle' },
   { id: 2, name: 'Karen Giffard' }

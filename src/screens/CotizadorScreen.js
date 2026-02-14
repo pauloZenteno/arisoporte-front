@@ -112,6 +112,13 @@ const CotizadorScreen = ({ navigation }) => {
     try {
       Alert.alert("Generando PDF", "Descargando cotización, por favor espere...");
       const fullQuoteData = await getQuoteById(id);
+
+      // --- LOGS AÑADIDOS PARA DEBUG ---
+      console.log("============ DATA ENVIADA AL PDF ============");
+      console.log(JSON.stringify(fullQuoteData, null, 2));
+      console.log("===========================================");
+      // ---------------------------------
+
       await downloadQuotePdf(fullQuoteData);
     } catch (error) {
       console.error(error);

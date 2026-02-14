@@ -10,6 +10,8 @@ import { getProductPriceSchemes } from '../services/productPriceService';
 import { getQuoteById, createQuote, updateQuote } from '../services/quoteService';
 import { useQuoteCalculator } from '../hooks/useQuoteCalculator';
 import { INITIAL_MODULES, HARDCODED_PRODUCTS, MODULE_IDS, PERIODICITIES } from '../utils/quoteConstants';
+// Importamos SELLER_PHONES
+import { SELLER_PHONES } from '../utils/constants'; 
 import { useClients } from '../context/ClientContext';
 import { useThemeColors } from '../hooks/useThemeColors';
 
@@ -80,9 +82,19 @@ const GeneralInfoTab = ({ data, onChange, onPeriodicityChange, colors, isDark })
                     <View style={{flex: 1, marginRight: 10}}>
                         <Text style={[styles.label, { color: colors.textSecondary }]}>Teléfono</Text>
                         <TextInput 
-                            style={[styles.input, styles.disabledInput, { backgroundColor: isDark ? colors.background : '#F9FAFB', color: colors.textSecondary, borderColor: colors.border }]} 
+                            style={[
+                                styles.input, 
+                                { 
+                                    backgroundColor: colors.card, 
+                                    color: colors.text, 
+                                    borderColor: colors.border 
+                                }
+                            ]} 
                             value={data.phone} 
-                            editable={false} 
+                            onChangeText={(t) => onChange('phone', t)}
+                            keyboardType="phone-pad"
+                            placeholder="Teléfono"
+                            placeholderTextColor={colors.textSecondary}
                         />
                     </View>
                     <View style={{flex: 1}}>
@@ -364,7 +376,19 @@ export default function QuoteCreateScreen() {
                     }
                     if (user) {
                         const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
-                        setForm(prev => ({ ...prev, employeeName: fullName, email: user.email || '', phone: user.phone || '', jobPosition: user.jobPosition || '' }));
+                        // --- LÓGICA DE TELÉFONO ACTUALIZADA ---
+                        // 1. Prioridad: Teléfono del usuario (si lo tuviera en el token)
+                        // 2. Prioridad: Teléfono hardcodeado según ID
+                        // 3. Fallback: Cadena vacía
+                        const defaultPhone = user.phone || SELLER_PHONES[user.id] || '';
+                        
+                        setForm(prev => ({ 
+                            ...prev, 
+                            employeeName: fullName, 
+                            email: user.email || '', 
+                            phone: defaultPhone, 
+                            jobPosition: user.jobPosition || '' 
+                        }));
                     }
                 }
             } catch (error) { Alert.alert("Error", "No se pudieron cargar los datos necesarios."); }
@@ -402,17 +426,54 @@ export default function QuoteCreateScreen() {
     };
 
     const handleSave = async () => {
-        if (!form.companyName || !form.clientName) { Alert.alert("Validación", "Compañía y Cliente son obligatorios."); return; }
+        if (!form.companyName || !form.clientName) { 
+            Alert.alert("Validación", "Compañía y Cliente son obligatorios."); 
+            return; 
+        }
         setSaving(true);
         try {
             const payload = { ...form, isActive: true };
-            if (!id) { delete payload.id; delete payload.folio; delete payload.created; }
-            payload.moduleDetails = payload.moduleDetails.map(m => { const { id: modId, quoteId, ...rest } = m; return { ...rest, employeeNumber: Number(m.employeeNumber) || 0, isActive: !!m.isActive }; });
-            payload.productDetails = payload.productDetails.map(p => { const { id: prodId, quoteId, ...rest } = p; return { ...rest, productId: p.productId || p.id, quantity: Number(p.quantity) || 0, isActive: true }; });
+            if (!id) { 
+                delete payload.id; 
+                delete payload.folio; 
+                delete payload.created; 
+            }
+
+            // LIMPIEZA DE DATOS
+            payload.moduleDetails = payload.moduleDetails
+                .filter(m => m.isActive && (Number(m.employeeNumber) || 0) > 0)
+                .map(m => { 
+                    const { id: modId, quoteId, ...rest } = m; 
+                    return { 
+                        ...rest, 
+                        employeeNumber: Number(m.employeeNumber), 
+                        isActive: true 
+                    }; 
+                });
+
+            payload.productDetails = payload.productDetails
+                .filter(p => (Number(p.quantity) || 0) > 0)
+                .map(p => { 
+                    const { id: prodId, quoteId, ...rest } = p; 
+                    return { 
+                        ...rest, 
+                        productId: p.productId || p.id, 
+                        quantity: Number(p.quantity), 
+                        isActive: true 
+                    }; 
+                });
+
+            console.log("============ PAYLOAD LIMPIO ============");
+            console.log(JSON.stringify(payload, null, 2));
+            console.log("========================================");
+
             id ? await updateQuote(id, payload) : await createQuote(payload);
             Alert.alert("Éxito", id ? "Cotización actualizada" : "Cotización creada");
             navigation.goBack();
-        } catch (error) { Alert.alert("Error", "No se pudo guardar la cotización."); }
+        } catch (error) { 
+            console.error(error);
+            Alert.alert("Error", "No se pudo guardar la cotización."); 
+        }
         finally { setSaving(false); }
     };
 
